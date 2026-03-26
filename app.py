@@ -8,7 +8,7 @@ import re
 ACTIVE_KEY = st.secrets.get("GEMINI_API_KEY", "")
 pd.set_option('display.max_colwidth', None)
 
-st.set_page_config(page_title="Content Engineer Pro | Strategic Flow", layout="wide")
+st.set_page_config(page_title="Content Engineer Pro | Unified System", layout="wide")
 
 st.markdown("""
     <style>
@@ -18,33 +18,47 @@ st.markdown("""
         font-size: 0.8em; font-weight: bold; border-left: 4px solid #3b82f6; color: #1e293b; margin-bottom: 8px;
     }
     .stream-header { background-color: #0f172a; color: white; padding: 12px; border-radius: 5px; margin-top: 20px; font-weight: bold; }
+    .summary-box { font-size: 0.82em; color: #1e293b; line-height: 1.5; background: #ffffff; padding: 15px; border-radius: 10px; border: 1px solid #dee2e6; margin-bottom: 15px; }
     .logic-summary { font-size: 0.82em; color: #334155; line-height: 1.4; background: #f1f5f9; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 10px; }
-    .prompt-history { font-size: 0.75em; color: #64748b; font-style: italic; background: #ffffff; padding: 8px; border-radius: 5px; border-left: 3px solid #cbd5e1; margin-bottom: 5px; }
     mark { border-radius: 4px; padding: 0 2px; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. SIDEBAR: REORGANIZED FLOW ---
+# --- 2. SIDEBAR: THE UNIFIED SYSTEM SUMMARY ---
 with st.sidebar:
     st.title("🛡️ Content Engineer Pro")
     
-    # --- SECTION 1: MESSAGE REQUIREMENTS (TOP) ---
-    st.header("🎯 Message Requirements")
-    keywords_input = st.text_input("Keywords", placeholder="e.g. BOGO, Sale", key="flow_kw")
-    
-    # Symmetrical Text Areas
-    prod_description = st.text_area("Product Description", placeholder="General product value prop...", height=80, key="flow_desc")
-    intention = st.text_area("Intention (Inter Prompt)", placeholder="e.g. Conversion, Awareness, Upsell", height=80, key="flow_int")
-    
-    # Optional Targeting Details
-    with st.expander("📍 Target Details (Optional)", expanded=True):
-        specific_product = st.text_input("Specific Product Name", placeholder="e.g. iPhone 15 Pro", key="flow_spec")
-        segment = st.text_input("Segment", placeholder="e.g. Existing Users", key="flow_seg")
-        sub_segment = st.text_input("Sub-Segment", placeholder="e.g. High-Spenders", key="flow_sub")
+    # --- WEBSITE SUMMARY ---
+    st.header("🌐 System Overview")
+    st.markdown("""
+    <div class="summary-box">
+    <b>What this tool does:</b><br>
+    This is a Strategic Content Engineering platform that transforms raw performance data into high-ROI marketing copy. It bridges the gap between <b>Financial Economics</b> and <b>Creative Generation</b>.
+    <br><br>
+    <b>1. Data Ranking:</b> We ingest your CSVs and calculate the true profit of every message by pitting Revenue against View Costs.
+    <br><br>
+    <b>2. DNA Extraction:</b> The system identifies the "Winners"—messages that achieved the highest profit with the lowest capital spend.
+    <br><br>
+    <b>3. Result Generation:</b> Gemini 1.5 Pro analyzes the winners' structure, tone, and formatting to engineer 10 new variations (7 Evolutionary for stability, 3 Revolutionary for growth).
+    </div>
+    """, unsafe_allow_html=True)
 
     st.divider()
 
-    # --- SECTION 2: UNIT ECONOMICS (BELOW REQUIREMENTS) ---
+    # --- MESSAGE REQUIREMENTS ---
+    st.header("🎯 Message Requirements")
+    keywords_input = st.text_input("Keywords", placeholder="e.g. BOGO, Sale", key="sys_kw")
+    prod_description = st.text_area("Product Description", placeholder="General product value prop...", height=80, key="sys_desc")
+    intention = st.text_area("Intention (Inter Prompt)", placeholder="e.g. Conversion, Awareness, Upsell", height=80, key="sys_int")
+    
+    with st.expander("📍 Target Details (Optional)", expanded=True):
+        specific_product = st.text_input("Specific Product Name", placeholder="e.g. iPhone 15 Pro", key="sys_spec")
+        segment = st.text_input("Segment", placeholder="e.g. Existing Users", key="sys_seg")
+        sub_segment = st.text_input("Sub-Segment", placeholder="e.g. High-Spenders", key="sys_sub")
+
+    st.divider()
+
+    # --- UNIT ECONOMICS ---
     st.header("💰 Unit Economics")
     cost_per_view = st.number_input("Cost per Viewed (Rs)", value=0.66, format="%.2f")
     rev_per_click = st.number_input("Revenue per Click (Rs)", value=1000.0)
@@ -55,24 +69,10 @@ with st.sidebar:
     st.header("⚙️ Scoring Logic")
     st.markdown(f"""
     <div class="logic-summary">
-    <b>ROI Factor:</b> Efficiency of profit vs cost.<br>
-    <b>Final Score:</b> ROI × Volume Confidence Factor.
+    <b>ROI Factor:</b> (Net Profit / Total Cost). Focuses on Efficiency.<br>
+    <b>Final Score:</b> ROI weighted by a Volume Confidence factor to ensure statistical reliability.
     </div>
     """, unsafe_allow_html=True)
-
-    # --- STRATEGIC PROMPT HISTORY ---
-    st.header("📜 Strategic Prompt History")
-    history = [
-        "1. Fix Column Mapping (Viewed/Clicked).",
-        "2. UI Tabs for Full Ranking vs Top 10.",
-        "3. Financials: 1000 Rev/Click | 0.66 Cost/View.",
-        "4. Efficiency Logic: Lower volume wins if profits match.",
-        "5. Final Score visibility per row.",
-        "6. Symmetrical UI: Intention and Product Description boxes equalized.",
-        "7. Layout: Unit Economics moved below Message Requirements."
-    ]
-    for p in history:
-        st.markdown(f'<div class="prompt-history">{p}</div>', unsafe_allow_html=True)
 
 # --- 3. CORE PROCESSING ENGINE ---
 def process_true_performance(df, label):
@@ -145,7 +145,7 @@ st.title("📊 Strategic Content Dashboard")
 
 # Stream 1
 st.markdown('<div class="stream-header">📂 STREAM 1: Performance Analysis</div>', unsafe_allow_html=True)
-s1_files = st.file_uploader("Upload S1 CSVs", type="csv", accept_multiple_files=True, key="s1_flow")
+s1_files = st.file_uploader("Upload S1 CSVs", type="csv", accept_multiple_files=True, key="s1_sys")
 if s1_files:
     df_s1 = pd.concat([pd.read_csv(f) for f in s1_files], ignore_index=True)
     ranked_s1, c_s1 = process_true_performance(df_s1, "Stream 1")
@@ -159,7 +159,7 @@ st.divider()
 
 # Stream 2
 st.markdown('<div class="stream-header">📂 STREAM 2: Style & Format Replication</div>', unsafe_allow_html=True)
-s2_file = st.file_uploader("Upload S2 Format CSV", type="csv", key="s2_flow")
+s2_file = st.file_uploader("Upload S2 Format CSV", type="csv", key="s2_sys")
 if s2_file:
     df_s2 = pd.read_csv(s2_file)
     ranked_s2, c_s2 = process_true_performance(df_s2, "Stream 2")
