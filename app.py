@@ -3,8 +3,13 @@ import pandas as pd
 from google import genai
 import re
 
-# --- AUTO-CONFIG ---
-API_KEY = "AIzaSyBPxucILyrIELye2IxFmLO_Ll1NRY2-LGM"
+# --- SECURE CONFIG ---
+# This looks for a secret variable instead of a hardcoded string
+if "GEMINI_API_KEY" in st.secrets:
+    API_KEY = st.secrets["GEMINI_API_KEY"]
+else:
+    st.error("⚠️ API Key not found in Secrets! Please add it in Streamlit Cloud settings.")
+    st.stop()
 
 st.set_page_config(page_title="Content Engineer Pro", layout="wide")
 st.title("📊 Content Assessment & Engineering")
@@ -35,6 +40,50 @@ if uploaded_files:
         df = pd.concat(all_dfs, ignore_index=True)
         df.columns = df.columns.str.strip()
         
+        col_map = {c.lower(): c for c in df.columns}
+        content_col = col_map.get('content', df.columns[0])
+        ctr_col = col_map.get('ctr', None)
+
+        st.subheader("📋 Data Assessment Preview")
+        st.dataframe(df.head(10))
+
+        if st.button("🚀 Run Deep Assessment"):
+            with st.spinner("Gemini 3 is calculating Hit Percentages and Mapping Content..."):
+                try:
+                    client = genai.Client(api_key=API_KEY)
+                    
+                    if ctr_col:
+                        df['CTR_Num'] = pd.to_numeric(df[ctr_col].astype(str).str.replace('%', ''), errors='coerce')
+                        winners = df.sort_values(by='CTR_Num', ascending=False).head(5).copy()
+                    else:
+                        winners = df.head(5).copy()
+                    
+                    winners['Ref_ID'] = [f"Winner #{i+1}" for i in range(len(winners))]
+                    
+                    winners_context = ""
+                    for _, row in winners.iterrows():
+                        winners_context += f"[{row['Ref_ID']}] Content: {row[content_col]} | CTR: {row.get(ctr_col, 'N/A')}\n"
+
+                    response = client.models.generate_content(
+                        model="gemini-3-flash-preview",
+                        contents=f"""
+                        HISTORICAL DATA: {winners_context}
+                        TASK: Create 5 new rows. Keywords: {keywords_input}, Product: {prod_description}, Goal: {intention}.
+                        OUTPUT: A table with 6 columns: New Content, Segmentation, Reference ID, Reference Content, Hit Percentage, Reasoning.
+                        """
+                    )
+                    
+                    st.success("Analysis Complete!")
+                    highlighted_output = highlight_keywords(response.text, keywords_input)
+                    st.markdown(highlighted_output, unsafe_allow_html=True)
+                    
+                    # Bonus: Download Button
+                    st.download_button("📥 Download Results as Text", response.text, file_name="engineered_content.txt")
+
+                except Exception as ai_err:
+                    st.error(f"AI Error: {ai_err}")
+    except Exception as e:
+        st.error(f"Processing Error: {e}")        
         # Mapping columns for stability
         col_map = {c.lower(): c for c in df.columns}
         content_col = col_map.get('content', df.columns[0])
