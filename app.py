@@ -8,7 +8,7 @@ import re
 ACTIVE_KEY = st.secrets.get("GEMINI_API_KEY", "")
 pd.set_option('display.max_colwidth', None)
 
-st.set_page_config(page_title="Content Engineer Pro | Avg-Baseline Edition", layout="wide")
+st.set_page_config(page_title="Content Engineer Pro | Scale-Validated", layout="wide")
 
 st.markdown("""
     <style>
@@ -17,7 +17,7 @@ st.markdown("""
     section[data-testid="stSidebar"] { width: 400px !important; }
     .formula-box { 
         background-color: #f0f2f6; padding: 15px; border-radius: 8px; font-family: 'Courier New', monospace; 
-        font-size: 0.95em; font-weight: bold; border-left: 6px solid #6366f1; color: #1f2937; margin-bottom: 10px;
+        font-size: 0.95em; font-weight: bold; border-left: 6px solid #10b981; color: #1f2937; margin-bottom: 10px;
     }
     .stream-header {
         background-color: #1f2937; color: white; padding: 15px; border-radius: 5px; margin-top: 25px; font-weight: bold; font-size: 1.2em;
@@ -26,29 +26,38 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. SIDEBAR: PARAMETERS & AVG-LOGIC ---
+# --- 2. SIDEBAR: PARAMETERS > SUMMARY > LOGIC ---
 with st.sidebar:
     st.title("🛡️ Content Engineer Pro")
     
     st.header("🎯 Campaign Parameters")
-    keywords_input = st.text_input("Target Keywords", placeholder="e.g. BOGO, Sale", key="v18_kw")
-    prod_description = st.text_area("Product Details", height=100, key="v18_prod")
-    intention = st.text_area("Primary Goal", height=100, key="v18_goal")
+    keywords_input = st.text_input("Target Keywords", placeholder="e.g. BOGO, Sale", key="v20_kw")
+    prod_description = st.text_area("Product Details", height=100, key="v20_prod")
+    intention = st.text_area("Primary Goal", height=100, key="v20_goal")
     
     st.divider()
-    st.header("🔍 Segmentation")
-    seg_type = st.text_input("Segment Type", key="v18_type")
-    sub_seg = st.text_input("Sub Segment", key="v18_sub")
+    st.header("🔍 Advanced Segmentation")
+    seg_type = st.text_input("Segment Type", key="v20_type")
+    seg_reason = st.text_input("Reason for Segment", key="v20_reason")
+    sub_seg = st.text_input("Sub Segment", key="v20_sub")
+    spec_prod = st.text_input("Specific Product Base", key="v20_base")
 
     st.divider()
-    st.header("⚙️ Efficiency Logic (v2)")
-    with st.expander("Avg-Volume Baseline", expanded=True):
-        st.markdown('<div class="formula-box">Baseline = Dataset Avg Volume</div>', unsafe_allow_html=True)
-        st.markdown('<div class="formula-box">Efficiency = CTR% / (Vol / Avg_Vol)</div>', unsafe_allow_html=True)
-        st.caption("Highlights content that beats the average efficiency of the current dataset.")
+    st.header("📋 Project Summary")
+    st.write("Transforms raw performance data into high-scale optimized content by validating CTR against statistical volume.")
+    
+    st.header("⚙️ Applied Logic")
+    with st.expander("1. Scale-Validation Engine", expanded=True):
+        st.markdown('<div class="formula-box">CTR% = (Clicks / Viewed) × 100</div>', unsafe_allow_html=True)
+        st.markdown('<div class="formula-box">Score = CTR% * (Vol / (Vol + Avg_Vol))</div>', unsafe_allow_html=True)
+        st.caption("Eliminates 'Small Sample' flukes. High CTR must be backed by volume to rank.")
+
+    with st.expander("2. 7+3 Strategic Engineering", expanded=True):
+        st.write("**7 Evolutionary:** Performance-led structural swaps.")
+        st.write("**3 Revolutionary:** Psychological angle pivots.")
 
 # --- 3. MAIN DASHBOARD ---
-st.title("📊 Strategic Efficiency Engineering Dashboard")
+st.title("📊 Strategic Scale-Validated Dashboard")
 
 def highlight_keywords(text, keywords_str):
     if not keywords_str: return text
@@ -59,8 +68,8 @@ def highlight_keywords(text, keywords_str):
     return text
 
 # --- STREAM 1: PERFORMANCE DNA ---
-st.markdown('<div class="stream-header">📂 STREAM 1: Average-Baseline Efficiency Analysis</div>', unsafe_allow_html=True)
-perf_files = st.file_uploader("Upload Performance CSVs", type="csv", accept_multiple_files=True, key="v18_perf_up")
+st.markdown('<div class="stream-header">📂 STREAM 1: Scale-Validated Performance (Winner Extraction)</div>', unsafe_allow_html=True)
+perf_files = st.file_uploader("Upload Historical Performance CSVs", type="csv", accept_multiple_files=True, key="v20_perf_up")
 
 if perf_files:
     try:
@@ -68,6 +77,7 @@ if perf_files:
         df_p = pd.concat(all_dfs, ignore_index=True)
         df_p.columns = df_p.columns.str.strip()
         
+        # Mapping
         cols_low = [c.lower() for c in df_p.columns]
         msg_idx = next((i for i, c in enumerate(cols_low) if any(x in c for x in ['message', 'content', 'text'])), 0)
         view_idx = next((i for i, c in enumerate(cols_low) if 'viewed(users)' in c or 'viewed' in c), None)
@@ -77,59 +87,57 @@ if perf_files:
             content_col = df_p.columns[msg_idx]
             v_col, c_col = df_p.columns[view_idx], df_p.columns[click_idx]
             
-            # --- CLEANING ---
+            # Numeric Cleaning
             df_p['V_N'] = pd.to_numeric(df_p[v_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
             df_p['C_N'] = pd.to_numeric(df_p[c_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
-            
-            # --- MATH ---
             df_p['True_CTR'] = (df_p['C_N'] / df_p['V_N'].replace(0, np.nan)) * 100
             df_p['True_CTR'] = df_p['True_CTR'].fillna(0.0)
             
-            # NEW LOGIC: Use Dataset Average Volume
-            avg_vol = df_p['V_N'].mean() if df_p['V_N'].mean() > 0 else 1
+            # NEW CONFIDENCE LOGIC
+            avg_vol = df_p['V_N'].mean()
+            df_p['Conf_Factor'] = df_p['V_N'] / (df_p['V_N'] + avg_vol)
+            df_p['Validated_Score'] = df_p['True_CTR'] * df_p['Conf_Factor']
             
-            # Efficiency Rank: CTR relative to how much volume it 'consumed' vs the average
-            df_p['Efficiency_Index'] = df_p['True_CTR'] / (df_p['V_N'] / avg_vol)
-            
-            full_ranked = df_p.sort_values(by='Efficiency_Index', ascending=False)
+            full_ranked = df_p.sort_values(by='Validated_Score', ascending=False)
             full_ranked['CTR% Display'] = full_ranked['True_CTR'].apply(lambda x: f"{x:.2f}%")
             
-            t1, t2 = st.tabs(["📑 All Rows (Efficiency Ranked)", "🏆 Top 10 High-Efficiency Winners"])
-            with t1: st.dataframe(full_ranked[[content_col, 'CTR% Display', v_col, c_col, 'Efficiency_Index']], use_container_width=True)
-            with t2: st.table(full_ranked.head(10)[[content_col, 'CTR% Display', v_col, 'Efficiency_Index']])
+            t1, t2 = st.tabs(["📑 All Rows (Scale-Ranked)", "🏆 Top 10 Scaled Winners"])
+            with t1: st.dataframe(full_ranked[[content_col, 'CTR% Display', v_col, c_col, 'Validated_Score']], use_container_width=True)
+            with t2: st.table(full_ranked.head(10)[[content_col, 'CTR% Display', v_col, 'Validated_Score']])
             
-            if st.button("🚀 Run Stream 1 Efficiency Engineering", key="v18_btn_p"):
+            if st.button("🚀 Run Stream 1 Strategic Engineering", key="v20_btn_p"):
                 genai.configure(api_key=ACTIVE_KEY)
                 model = genai.GenerativeModel('gemini-1.5-flash')
                 context_p = full_ranked.head(10)[[content_col, 'CTR% Display']].to_string(index=False)
-                prompt_p = f"Using Avg-Baseline Efficiency DNA:\n{context_p}\nEngineer 10 variations (7 Evo, 3 Revo) for {prod_description} with keywords {keywords_input}."
+                prompt_p = f"TASK: 10 variations (7 Evo, 3 Revo) using this validated Performance DNA:\n{context_p}\nParams: Product: {prod_description} | Keywords: {keywords_input} | Segment: {seg_type}"
                 res_p = model.generate_content(prompt_p)
                 st.markdown(highlight_keywords(res_p.text, keywords_input), unsafe_allow_html=True)
         else:
-            st.error(f"Metric Mapping Failed. Found: {list(df_p.columns)}")
+            st.error("Mapping Failed. Ensure 'Total Clicked(users)' and 'Total Viewed(users)' are present.")
     except Exception as e:
         st.error(f"Error: {e}")
 
 st.divider()
 
 # --- STREAM 2: FORMAT STRATEGY ---
-st.markdown('<div class="stream-header">📂 STREAM 2: Format-Based Engineering (Strategic Style)</div>', unsafe_allow_html=True)
-format_file = st.file_uploader("Upload Format Template CSV", type="csv", key="v18_format_up")
+st.markdown('<div class="stream-header">📂 STREAM 2: Format-Based Engineering (Style Replication)</div>', unsafe_allow_html=True)
+format_file = st.file_uploader("Upload Format Template CSV", type="csv", key="v20_format_up")
 
 if format_file:
     df_f = pd.read_csv(format_file)
-    st.write("### 📝 Full Format Dataset")
+    st.write("### 📝 Full Uploaded Format File")
     st.dataframe(df_f, use_container_width=True)
     
-    if st.button("🚀 Run Stream 2 Strategic Engineering (10 Row Suggestions)", key="v18_btn_f"):
+    if st.button("🚀 Run Stream 2 Strategic Engineering (10 Row Suggestions)", key="v20_btn_f"):
         genai.configure(api_key=ACTIVE_KEY)
         model = genai.GenerativeModel('gemini-1.5-flash')
         format_context = df_f.to_string(index=False)
         prompt_f = f"""
-        FORMAT: {format_context}
-        TASK: 10 Content Rows. 7 Evolutionary, 3 Revolutionary.
-        PARAMS: {prod_description} | Keywords: {keywords_input} | Goal: {intention} | Segment: {seg_type}
-        STRICT: Replicate structural segmentation (e.g. hygiene/BOGO format), emoji usage, and character style.
+        FORMAT REFERENCE: {format_context}
+        TASK: Generate 10 Content Rows. 7 Evolutionary, 3 Revolutionary.
+        Parameters: Product: {prod_description} | Keywords: {keywords_input} | Goal: {intention} | Segment: {seg_type}
+        STRICT INSTRUCTION: Replicate structural segmentation (Hygiene/BOGO format), emoji usage, and character style.
+        OUTPUT: Markdown table with Rank, New Content, Validation, Reference ID, Hit%, Logic Hook.
         """
         response_f = model.generate_content(prompt_f)
         st.markdown(highlight_keywords(response_f.text, keywords_input), unsafe_allow_html=True)
