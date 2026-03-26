@@ -8,11 +8,12 @@ import re
 ACTIVE_KEY = st.secrets.get("GEMINI_API_KEY", "")
 pd.set_option('display.max_colwidth', None)
 
-st.set_page_config(page_title="Content Engineer Pro | Logic-at-Bottom", layout="wide")
+st.set_page_config(page_title="Content Engineer Pro | Master Synthesis", layout="wide")
 
 st.markdown("""
     <style>
-    .stButton>button { width: 100%; border-radius: 5px; height: 3.5em; background-color: #007bff; color: white; font-weight: bold; }
+    .stButton>button { width: 100%; border-radius: 5px; height: 4em; background-color: #059669; color: white; font-weight: bold; font-size: 1.1em; border: none; }
+    .stButton>button:hover { background-color: #047857; border: none; }
     .formula-box { 
         background-color: #f8fafc; padding: 10px; border-radius: 8px; font-family: 'Courier New', monospace; 
         font-size: 0.8em; font-weight: bold; border-left: 4px solid #3b82f6; color: #1e293b; margin-bottom: 8px;
@@ -28,85 +29,62 @@ st.markdown("""
 with st.sidebar:
     st.title("🛡️ Content Engineer Pro")
     
-    # 1. MESSAGE REQUIREMENTS (TOP)
     st.header("🎯 Message Requirements")
-    keywords_input = st.text_input("Keywords", placeholder="e.g. BOGO, Sale", key="f_v5_kw")
-    prod_description = st.text_area("Product Description", placeholder="General value prop...", height=80, key="f_v5_desc")
-    intention = st.text_area("Intention (Inter Prompt)", placeholder="e.g. Conversion, Awareness", height=80, key="f_v5_int")
+    keywords_input = st.text_input("Keywords", placeholder="e.g. BOGO, Sale", key="ms_kw")
+    prod_description = st.text_area("Product Description", placeholder="General value prop...", height=80, key="ms_desc")
+    intention = st.text_area("Intention (Inter Prompt)", placeholder="e.g. Conversion, Awareness", height=80, key="ms_int")
     
     with st.expander("📍 Target Details (Optional)", expanded=True):
-        specific_product = st.text_input("Specific Product Name", key="f_v5_spec")
-        segment = st.text_input("Segment", key="f_v5_seg")
-        sub_segment = st.text_input("Sub-Segment", key="f_v5_sub")
+        specific_product = st.text_input("Specific Product Name", key="ms_spec")
+        segment = st.text_input("Segment", key="ms_seg")
+        sub_segment = st.text_input("Sub-Segment", key="ms_sub")
 
     st.divider()
 
-    # 2. UNIT ECONOMICS
     st.header("💰 Unit Economics")
     cost_per_view = st.number_input("Cost per Viewed (Rs)", value=0.66, format="%.2f")
     rev_per_click = st.number_input("Revenue per Click (Rs)", value=1000.0)
 
     st.divider()
 
-    # 3. SYSTEM OVERVIEW (BOTTOM HALF)
     st.header("🌐 System Overview")
     st.markdown("""
     <div class="summary-box">
-    <b>What this tool does:</b><br>
-    This platform transforms raw campaign data into high-ROI marketing copy by bridging <b>Financial Economics</b> and <b>Generative AI</b>.
-    <br><br>
-    <b>Process:</b> Data is ingested, ranked by efficiency, and winners are analyzed by Gemini to generate 10 new strategic variations.
+    <b>Master Generation:</b> This button synthesizes Stream 1 (Performance Data) and Stream 2 (Format Style) to create a hybrid output that is both high-performing and perfectly formatted.
     </div>
     """, unsafe_allow_html=True)
 
-    # 4. SCORING LOGIC (BOTTOM)
     st.header("⚙️ Scoring & Ranking Logic")
     st.markdown(f"""
     <div class="logic-summary">
-    <b>ROI Factor (Efficiency):</b><br>
-    Profit per Rupee spent. Smaller, high-efficiency campaigns rank higher than wasteful high-volume ones.
-    <div class="formula-box">ROI = Net Profit / Total Cost</div>
-    
-    <b>Scale Validation:</b><br>
-    Volume weighting ensures statistical reliability and scalability.
-    <div class="formula-box">Final Score = ROI × [Vol / (Vol + (Avg_Vol × 0.1))]</div>
+    <b>ROI Factor:</b> Net Profit / Total Cost.<br>
+    <b>Scale Validation:</b> ROI × [Vol / (Vol + (Avg_Vol × 0.1))]
     </div>
     """, unsafe_allow_html=True)
 
-# --- 3. CORE PROCESSING ENGINE ---
-def process_true_performance(df, label):
+# --- 3. PROCESSING ENGINE ---
+def process_data(df):
     df.columns = df.columns.str.strip()
     cols_low = [c.lower() for c in df.columns]
-    
     msg_idx = next((i for i, c in enumerate(cols_low) if any(x in c for x in ['message', 'content', 'text'])), 0)
     view_idx = next((i for i, c in enumerate(cols_low) if any(x in c for x in ['viewed', 'imp', 'sent', 'vol'])), None)
     click_idx = next((i for i, c in enumerate(cols_low) if any(x in c for x in ['clicked', 'click', 'ctr_count'])), None)
     
     if view_idx is not None and click_idx is not None:
         content_col, v_col, c_col = df.columns[msg_idx], df.columns[view_idx], df.columns[click_idx]
-        
         df['V_N'] = pd.to_numeric(df[v_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
         df['C_N'] = pd.to_numeric(df[c_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
         
-        # Core Calculations
         df['CTR%'] = (df['C_N'] / df['V_N'].replace(0, np.nan)) * 100
         df['Total_Cost'] = df['V_N'] * cost_per_view
         df['Net_Profit'] = (df['C_N'] * rev_per_click) - df['Total_Cost']
         df['ROI_Factor'] = (df['Net_Profit'] / df['Total_Cost'].replace(0, np.nan))
-        
         avg_v = df['V_N'].mean()
         df['Final_Score'] = df['ROI_Factor'] * (df['V_N'] / (df['V_N'] + (avg_v * 0.1)))
         
         ranked = df.sort_values(by='Final_Score', ascending=False)
         ranked['CTR_Disp'] = ranked['CTR%'].fillna(0).apply(lambda x: f"{x:.2f}%")
         ranked['Score_Disp'] = ranked['Final_Score'].apply(lambda x: f"{x:.4f}")
-        
-        t1, t2 = st.tabs([f"📑 Full {label} Ranking", f"🏆 Top 10 Efficiency Winners"])
-        with t1:
-            st.dataframe(ranked[[content_col, 'CTR_Disp', v_col, c_col, 'Score_Disp']], use_container_width=True)
-        with t2:
-            st.table(ranked.head(10)[[content_col, 'CTR_Disp', v_col, 'Score_Disp']])
-            
         return ranked, content_col
     return None, None
 
@@ -118,52 +96,68 @@ def highlight_keywords(text, keywords_str):
         text = pattern.sub(f'<mark style="background-color: #FFFF00; color: black; font-weight: bold;">{kw}</mark>', text)
     return text
 
-def get_ai_prompt(ranked_df, content_col):
-    context = ranked_df.head(10)[[content_col, 'CTR_Disp']].to_string(index=False)
-    prod_name = specific_product if specific_product else "the main product line"
-    return f"""
-    ROLE: Senior Growth Content Engineer.
-    SPECIFIC PRODUCT: {prod_name}
-    DESCRIPTION: {prod_description}
-    GOAL: {intention}
-    TARGETING: {segment} | {sub_segment}
-    KEYWORDS: {keywords_input}
-    
-    DNA (Top 10 Performers):
-    {context}
-    
-    TASK: Generate 10 Variations (7 Evolutionary, 3 Revolutionary).
-    RULES:
-    - Evolutionary: Stay close to DNA context but optimize CTA and Hook.
-    - Revolutionary: Pivot the angle completely based on the {intention}.
-    - Formatting: Replicate structural segmentation and emoji styles from DNA.
-    """
-
 # --- 4. MAIN DASHBOARD ---
-st.title("📊 Strategic Content Dashboard")
+st.title("📊 Strategic Content Engineering")
 
-# Stream 1
-st.markdown('<div class="stream-header">📂 STREAM 1: Performance Analysis</div>', unsafe_allow_html=True)
-s1_files = st.file_uploader("Upload S1 CSVs", type="csv", accept_multiple_files=True, key="s1_fin")
+col1, col2 = st.columns(2)
+with col1:
+    st.markdown('<div class="stream-header">📂 STREAM 1: Performance (ROI)</div>', unsafe_allow_html=True)
+    s1_files = st.file_uploader("Upload CSVs", type="csv", accept_multiple_files=True, key="ms_s1")
+with col2:
+    st.markdown('<div class="stream-header">📂 STREAM 2: Format & Style</div>', unsafe_allow_html=True)
+    s2_file = st.file_uploader("Upload CSV", type="csv", key="ms_s2")
+
+ranked_s1, c_s1 = None, None
+ranked_s2, c_s2 = None, None
+
 if s1_files:
     df_s1 = pd.concat([pd.read_csv(f) for f in s1_files], ignore_index=True)
-    ranked_s1, c_s1 = process_true_performance(df_s1, "Stream 1")
-    if ranked_s1 is not None and st.button("🚀 Run S1 Strategic Engineering"):
-        genai.configure(api_key=ACTIVE_KEY)
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        res = model.generate_content(get_ai_prompt(ranked_s1, c_s1))
-        st.markdown(highlight_keywords(res.text, keywords_input), unsafe_allow_html=True)
+    ranked_s1, c_s1 = process_data(df_s1)
+    with st.expander("🔍 View Stream 1 Rankings"):
+        st.dataframe(ranked_s1[[c_s1, 'CTR_Disp', 'Score_Disp']].head(10), use_container_width=True)
+
+if s2_file:
+    df_s2 = pd.read_csv(s2_file)
+    ranked_s2, c_s2 = process_data(df_s2)
+    with st.expander("🔍 View Stream 2 Format Winners"):
+        st.dataframe(ranked_s2[[c_s2, 'CTR_Disp', 'Score_Disp']].head(5), use_container_width=True)
 
 st.divider()
 
-# Stream 2
-st.markdown('<div class="stream-header">📂 STREAM 2: Style & Format Replication</div>', unsafe_allow_html=True)
-s2_file = st.file_uploader("Upload S2 Format CSV", type="csv", key="s2_fin")
-if s2_file:
-    df_s2 = pd.read_csv(s2_file)
-    ranked_s2, c_s2 = process_true_performance(df_s2, "Stream 2")
-    if ranked_s2 is not None and st.button("🚀 Run S2 Style Engineering"):
+# --- MASTER RUN BUTTON ---
+if st.button("🚀 MASTER GENERATE: SYNTHESIZE PERFORMANCE & STYLE"):
+    if not (ranked_s1 is not None or ranked_s2 is not None):
+        st.error("Please upload data for at least one stream to generate content.")
+    else:
         genai.configure(api_key=ACTIVE_KEY)
         model = genai.GenerativeModel('gemini-1.5-flash')
-        res = model.generate_content(get_ai_prompt(ranked_s2, c_s2))
-        st.markdown(highlight_keywords(res.text, keywords_input), unsafe_allow_html=True)
+        
+        # Combine Context
+        s1_context = ranked_s1.head(10)[[c_s1, 'CTR_Disp']].to_string(index=False) if ranked_s1 is not None else "N/A"
+        s2_context = ranked_s2.head(5)[[c_s2]].to_string(index=False) if ranked_s2 is not None else "N/A"
+        
+        master_prompt = f"""
+        ROLE: Expert Growth Marketer & Content Engineer.
+        PRODUCT: {specific_product if specific_product else 'Main Line'}
+        DESCRIPTION: {prod_description}
+        GOAL: {intention}
+        TARGET: {segment} | {sub_segment}
+        KEYWORDS: {keywords_input}
+
+        STREAM 1 (PERFORMANCE DNA):
+        {s1_context}
+
+        STREAM 2 (FORMAT & STYLE DNA):
+        {s2_context}
+
+        TASK:
+        Generate 10 Master Variations (7 Evolutionary, 3 Revolutionary).
+        - Use Stream 1 for high-ROI messaging angles.
+        - Use Stream 2 for emoji placement, structural segmentation, and layout.
+        - Ensure every keyword is naturally integrated.
+        """
+        
+        with st.spinner("Synthesizing DNA and Engineering Content..."):
+            res = model.generate_content(master_prompt)
+            st.markdown("### 🏆 Master Engineered Content")
+            st.markdown(highlight_keywords(res.text, keywords_input), unsafe_allow_html=True)
