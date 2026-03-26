@@ -9,6 +9,7 @@ pd.set_option('display.max_colwidth', None)
 
 st.set_page_config(page_title="High-CTR Engineer Pro", layout="wide")
 
+# Custom CSS for a professional "Growth Engineering" look
 st.markdown("""
     <style>
     .main { background-color: #f8f9fa; }
@@ -24,29 +25,29 @@ with st.sidebar:
     st.title("🛡️ High-CTR Engineer")
     
     st.header("🎯 Target Parameters")
-    keywords_input = st.text_input("Core Keywords", placeholder="e.g. Refill, Insulin, Safety", key="kw_v3")
-    prod_description = st.text_area("Product Details", height=150, key="prod_v3")
-    intention = st.text_area("Primary Goal", height=150, key="goal_v3")
+    keywords_input = st.text_input("Core Keywords", placeholder="e.g. Refill, Insulin, Safety", key="final_kw")
+    prod_description = st.text_area("Product Details", height=150, key="final_prod")
+    intention = st.text_area("Primary Goal", height=150, key="final_goal")
 
     st.divider()
     
     st.header("🔍 Advanced Targeting (Optional)")
-    seg_type = st.text_input("1. Segment Type", placeholder="e.g. Lapsed Users", key="type_v3")
-    seg_reason = st.text_input("2. Reason for Segment", placeholder="e.g. 30-Day Inactive", key="reason_v3")
-    sub_seg = st.text_input("3. Sub Segment", placeholder="e.g. Chronic/Insulin", key="sub_v3")
-    spec_prod = st.text_input("4. Specific Product Base", placeholder="e.g. Lantus", key="prod_base_v3")
+    seg_type = st.text_input("1. Segment Type", placeholder="e.g. Lapsed Users", key="final_type")
+    seg_reason = st.text_input("2. Reason for Segment", placeholder="e.g. 30-Day Inactive", key="final_reason")
+    sub_seg = st.text_input("3. Sub Segment", placeholder="e.g. Chronic/Insulin", key="final_sub")
+    spec_prod = st.text_input("4. Specific Product Base", placeholder="e.g. Lantus", key="final_base")
 
     st.divider()
     
     st.header("⚙️ Ranking Logic")
-    with st.expander("🔬 CTR Logic", expanded=True):
-        st.markdown('<div class="logic-box"><b>Sure-Shot Formula:</b><br><span class="formula">CTR = (Clicks / Viewed) * 100</span><br><br><b>Weighting:</b><br>80% Engagement DNA<br>20% Volume Confidence</div>', unsafe_allow_html=True)
-        st.caption("Prioritizes messages that convert visual impressions into clicks.")
+    with st.expander("🔬 High-CTR Attribution", expanded=True):
+        st.markdown('<div class="logic-box"><b>Sure-Shot Formula:</b><br><span class="formula">CTR = (Clicks / Viewed) * 100</span><br><br><b>Weighting:</b><br>80% Creative DNA (CTR)<br>20% Volume Confidence</div>', unsafe_allow_html=True)
+        st.caption("Prioritizes messages that successfully converted a View into a Click.")
 
 # --- 3. MAIN DASHBOARD ---
 st.title("📊 High-Performance Campaign Attribution")
 
-uploaded_files = st.file_uploader("Upload Campaign CSVs", type="csv", accept_multiple_files=True, key="uploader_v3")
+uploaded_files = st.file_uploader("Upload Campaign CSVs", type="csv", accept_multiple_files=True, key="final_uploader")
 
 if uploaded_files:
     try:
@@ -67,15 +68,15 @@ if uploaded_files:
             df['Viewed_N'] = pd.to_numeric(df[view_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
             df['Clicks_N'] = pd.to_numeric(df[clicks_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
             
-            # B. CALCULATE ACTUAL CTR PERCENTAGE (Clicks/Viewed)
+            # B. CALCULATE CTR PERCENTAGE
             df['CTR_Decimal'] = (df['Clicks_N'] / df['Viewed_N']).replace([np.inf, -np.inf], 0).fillna(0)
             df['CTR_Percentage'] = (df['CTR_Decimal'] * 100).round(2)
             
-            # C. VOLUME CONFIDENCE (Logarithmic scale)
+            # C. VOLUME LOGIC (Statistical Confidence)
             max_views = df['Viewed_N'].max() if df['Viewed_N'].max() > 0 else 1
             df['Log_Scale'] = np.log1p(df['Viewed_N']) / np.log1p(max_views)
             
-            # D. FINAL ATTRIBUTION SCORE
+            # D. FINAL SCORE (80% weight on CTR)
             df['Attribution_Score'] = (df['CTR_Decimal'] * 0.8) + (df['Log_Scale'] * 0.2)
 
             # --- DISPLAY ---
@@ -87,17 +88,19 @@ if uploaded_files:
             st.subheader("🏆 Step 2: High-CTR Benchmarks (Ranked by Clicks/Viewed)")
             winners = df.sort_values(by='Attribution_Score', ascending=False).head(10).copy()
             
-            # Formatted column for display
+            # Clear percentage display
             winners['Final CTR %'] = winners['CTR_Percentage'].astype(str) + '%'
             
             st.table(winners[[id_col, who_col, msg_col, 'Final CTR %', 'Attribution_Score']])
 
-            if st.button("🚀 Step 3: Engineer Content from High-CTR DNA", key="engineer_v3"):
+            if st.button("🚀 Step 3: Engineer Content from High-CTR DNA", key="final_btn"):
                 if not ACTIVE_KEY:
-                    st.error("API Key missing! Add GEMINI_API_KEY to your Secrets.")
+                    st.error("API Key missing! Please check your Streamlit Secrets.")
                 else:
                     try:
+                        # PROPER API CONFIGURATION
                         genai.configure(api_key=ACTIVE_KEY)
+                        # Use the exact model name without prefixes for stability
                         model = genai.GenerativeModel('gemini-1.5-flash')
                         
                         context_data = ""
@@ -110,7 +113,7 @@ if uploaded_files:
                         WINNERS DATA: {context_data}
                         
                         TASK:
-                        1. Factual Audit: Why did these IDs achieve high CTRs (Clicks/Viewed)?
+                        1. Factual Audit: Why did these specific Campaign IDs achieve high CTRs (Clicks/Viewed)?
                         2. Engineer 10 Variations (7 Evolutionary, 3 Revolutionary).
                         3. Table columns: Usage Rank, New Content, Reference ID, Source Segment, Hit %, Reasoning.
                         """
