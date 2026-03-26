@@ -38,7 +38,7 @@ with st.sidebar:
     # Core Mandatory Requirements
     keywords_input = st.text_input("Keywords", placeholder="e.g. BOGO, Sale", key="f_v3_kw")
     prod_description = st.text_area("Product Description", placeholder="General product value prop...", height=70, key="f_v3_desc")
-    intention = st.text_input("Intention", placeholder="e.g. Conversion, Awareness", height=70, key="f_v3_desc")
+    intention = st.text_input("Intention", placeholder="e.g. Conversion, Awareness", key="f_v3_int")
     
     # Optional Targeting Details (Including Specific Product)
     with st.expander("📍 Target Details (Optional)", expanded=True):
