@@ -8,7 +8,7 @@ import re
 ACTIVE_KEY = st.secrets.get("GEMINI_API_KEY", "")
 pd.set_option('display.max_colwidth', None)
 
-st.set_page_config(page_title="Content Engineer Pro | Efficiency Rank", layout="wide")
+st.set_page_config(page_title="Content Engineer Pro | Fixed Edition", layout="wide")
 
 st.markdown("""
     <style>
@@ -31,29 +31,22 @@ with st.sidebar:
     st.title("🛡️ Content Engineer Pro")
     
     st.header("🎯 Campaign Parameters")
-    keywords_input = st.text_input("Target Keywords", placeholder="e.g. BOGO, Sale", key="v16_kw")
-    prod_description = st.text_area("Product Details", height=100, key="v16_prod")
-    intention = st.text_area("Primary Goal", height=100, key="v16_goal")
+    keywords_input = st.text_input("Target Keywords", placeholder="e.g. BOGO, Sale", key="v17_kw")
+    prod_description = st.text_area("Product Details", height=100, key="v17_prod")
+    intention = st.text_area("Primary Goal", height=100, key="v17_goal")
     
     st.divider()
     st.header("🔍 Advanced Segmentation")
-    seg_type = st.text_input("Segment Type", key="v16_type")
-    sub_seg = st.text_input("Sub Segment", key="v16_sub")
-    spec_prod = st.text_input("Specific Product Base", key="v16_base")
+    seg_type = st.text_input("Segment Type", key="v17_type")
+    sub_seg = st.text_input("Sub Segment", key="v17_sub")
+    spec_prod = st.text_input("Specific Product Base", key="v17_base")
 
     st.divider()
-    st.header("📋 Project Summary")
-    st.write("Identifies high-efficiency creative hooks by prioritizing high CTR and penalizing high volume to find niche performance winners.")
-    
     st.header("⚙️ Efficiency Logic")
     with st.expander("1. Inverse Volume Ranking", expanded=True):
         st.markdown('<div class="formula-box">CTR% = (Clicks / Viewed) × 100</div>', unsafe_allow_html=True)
-        st.markdown('<div class="formula-box">Efficiency Score = (CTR% × 0.8) - (Volume_Normalized × 0.2)</div>', unsafe_allow_html=True)
-        st.caption("Lower volume + Higher CTR = Higher Rank.")
-
-    with st.expander("2. 7+3 Strategic Engineering", expanded=True):
-        st.write("**7 Evolutionary:** Efficiency-led.")
-        st.write("**3 Revolutionary:** High-risk pivots.")
+        st.markdown('<div class="formula-box">Rank = (CTR% High) + (Volume Low)</div>', unsafe_allow_html=True)
+        st.caption("Lower volume + Higher CTR = Higher Efficiency Rank.")
 
 # --- 3. MAIN DASHBOARD ---
 st.title("📊 Strategic Efficiency Engineering Dashboard")
@@ -68,7 +61,7 @@ def highlight_keywords(text, keywords_str):
 
 # --- STREAM 1: PERFORMANCE DNA ---
 st.markdown('<div class="stream-header">📂 STREAM 1: Efficiency-Based Analysis (Niche Winners)</div>', unsafe_allow_html=True)
-perf_files = st.file_uploader("Upload Historical Performance CSVs", type="csv", accept_multiple_files=True, key="v16_perf_up")
+perf_files = st.file_uploader("Upload Historical Performance CSVs", type="csv", accept_multiple_files=True, key="v17_perf_up")
 
 if perf_files:
     try:
@@ -83,19 +76,20 @@ if perf_files:
 
         if view_idx is not None and click_idx is not None:
             content_col = df_p.columns[msg_idx]
-            v_col, c_col = df_p.columns[view_idx], df_p.columns[click_idx]
+            v_col = df_p.columns[view_idx]
+            c_col = df_p.columns[click_idx]  # Fixed: defined as c_col
             
             # --- METRIC CLEANING ---
             df_p['V_N'] = pd.to_numeric(df_p[v_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
-            df_p['C_N'] = pd.to_numeric(df_p[click_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+            df_p['C_N'] = pd.to_numeric(df_p[c_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
             
             # --- CTR% CALCULATION ---
             df_p['CTR_Final'] = (df_p['C_N'] / df_p['V_N'].replace(0, np.nan)) * 100
             df_p['CTR_Final'] = df_p['CTR_Final'].fillna(0.0)
             
             # --- EFFICIENCY RANKING LOGIC ---
-            # (CTR% is rewarded, Volume is normalized and penalized)
             vol_max = df_p['V_N'].max() if df_p['V_N'].max() > 0 else 1
+            # CTR is rewarded (0.8), Volume is penalized (0.2)
             df_p['Efficiency_Score'] = (df_p['CTR_Final'] * 0.8) - ((df_p['V_N'] / vol_max) * 20)
             
             full_ranked = df_p.sort_values(by='Efficiency_Score', ascending=False)
@@ -105,15 +99,15 @@ if perf_files:
             with t1: st.dataframe(full_ranked[[content_col, 'CTR% Display', v_col, c_col, 'Efficiency_Score']], use_container_width=True)
             with t2: st.table(full_ranked.head(10)[[content_col, 'CTR% Display', v_col, 'Efficiency_Score']])
             
-            if st.button("🚀 Run Stream 1 Efficiency Engineering", key="v16_btn_p"):
+            if st.button("🚀 Run Stream 1 Efficiency Engineering", key="v17_btn_p"):
                 genai.configure(api_key=ACTIVE_KEY)
                 model = genai.GenerativeModel('gemini-1.5-flash')
                 context_p = full_ranked.head(10)[[content_col, 'CTR% Display']].to_string(index=False)
-                prompt_p = f"TASK: Generate 10 variations (7 Evo, 3 Revo) using this Efficiency DNA (Low Vol/High CTR):\n{context_p}\nParams: Product: {prod_description} | Keywords: {keywords_input} | Segment: {seg_type}"
+                prompt_p = f"TASK: Generate 10 variations (7 Evo, 3 Revo) using this Efficiency DNA:\n{context_p}\nParams: Product: {prod_description} | Keywords: {keywords_input} | Segment: {seg_type}"
                 res_p = model.generate_content(prompt_p)
                 st.markdown(highlight_keywords(res_p.text, keywords_input), unsafe_allow_html=True)
         else:
-            st.error(f"Metric Mapping Failed. Ensure columns 'Total Clicked(users)' and 'Total Viewed(users)' exist.")
+            st.error(f"Metric Mapping Failed. Check 'Total Clicked(users)' and 'Total Viewed(users)'.")
     except Exception as e:
         st.error(f"Error: {e}")
 
@@ -121,14 +115,14 @@ st.divider()
 
 # --- STREAM 2: FORMAT STRATEGY ---
 st.markdown('<div class="stream-header">📂 STREAM 2: Format-Based Engineering (Strategic Style)</div>', unsafe_allow_html=True)
-format_file = st.file_uploader("Upload Format Template CSV", type="csv", key="v16_format_up")
+format_file = st.file_uploader("Upload Format Template CSV", type="csv", key="v17_format_up")
 
 if format_file:
     df_f = pd.read_csv(format_file)
     st.write("### 📝 Full Format Dataset")
     st.dataframe(df_f, use_container_width=True)
     
-    if st.button("🚀 Run Stream 2 Strategic Engineering (10 Row Suggestions)", key="v16_btn_f"):
+    if st.button("🚀 Run Stream 2 Strategic Engineering (10 Row Suggestions)", key="v17_btn_f"):
         if not ACTIVE_KEY:
             st.error("API Key Missing")
         else:
@@ -144,7 +138,7 @@ if format_file:
                 Product: {prod_description} | Keywords: {keywords_input} | Goal: {intention}
                 Segment: {seg_type} | {sub_seg} | {spec_prod}
                 
-                STRICT INSTRUCTION: Replicate the emoji usage, structural segmentation, and character style.
+                STRICT INSTRUCTION: Replicate the emoji usage, structural segmentation (e.g. hygiene/BOGO format), and character style.
                 OUTPUT: Markdown table with: Usage Rank, New Content (File 2 Style), Segmentation Validation, Reference ID, Hit Percentage, Logic Hook.
                 """
                 
