@@ -8,7 +8,7 @@ import re
 ACTIVE_KEY = st.secrets.get("GEMINI_API_KEY", "")
 pd.set_option('display.max_colwidth', None)
 
-st.set_page_config(page_title="Content Engineer Pro | Dual-Stream Edition", layout="wide")
+st.set_page_config(page_title="Content Engineer Pro | Vertical Edition", layout="wide")
 
 st.markdown("""
     <style>
@@ -25,33 +25,37 @@ st.markdown("""
         border-left: 6px solid #007bff;
         color: #1f2937;
     }
+    .stream-header {
+        background-color: #007bff;
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+        margin-top: 20px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
 # --- 2. SIDEBAR: PARAMETERS & SEGMENTATION ---
 with st.sidebar:
-    st.title("🛡️ Dual-Stream Engineer")
+    st.title("🛡️ Content Engineer Pro")
     
     st.header("🎯 Campaign Parameters")
-    keywords_input = st.text_input("Target Keywords", placeholder="e.g. BOGO, Sale, Hygiene", key="side_kw")
-    prod_description = st.text_area("Product Details", height=120, key="side_prod")
-    intention = st.text_area("Primary Goal", height=120, key="side_goal")
+    keywords_input = st.text_input("Target Keywords", placeholder="e.g. BOGO, Sale, Hygiene", key="v7_kw")
+    prod_description = st.text_area("Product Details", height=100, key="v7_prod")
+    intention = st.text_area("Primary Goal", height=100, key="v7_goal")
     
     st.divider()
     
     st.header("🔍 Advanced Segmentation")
-    seg_type = st.text_input("Segment Type", key="side_type")
-    seg_reason = st.text_input("Reason for Segment", key="side_reason")
-    sub_seg = st.text_input("Sub Segment", key="side_sub")
-    spec_prod = st.text_input("Specific Product Base", key="side_base")
+    seg_type = st.text_input("Segment Type", key="v7_type")
+    seg_reason = st.text_input("Reason for Segment", key="v7_reason")
+    sub_seg = st.text_input("Sub Segment", key="v7_sub")
+    spec_prod = st.text_input("Specific Product Base", key="v7_base")
 
     st.divider()
-    st.header("⚙️ System Logic")
-    with st.expander("Logic 1: Performance Ranking", expanded=True):
-        st.markdown('<div class="formula-box">Score = (CTR × 0.7) + (Vol × 0.3)</div>', unsafe_allow_html=True)
-    with st.expander("Logic 2: Format Strategy", expanded=True):
-        st.write("**7 Evolutionary + 3 Revolutionary**")
-        st.caption("Replicating structural skeletons from File 2.")
+    st.header("⚙️ Applied Logic")
+    st.markdown('<div class="formula-box">Stream 1: (CTR × 0.7) + (Vol × 0.3)</div>', unsafe_allow_html=True)
+    st.markdown('<div class="formula-box">Stream 2: Format Replication (7+3)</div>', unsafe_allow_html=True)
 
 # --- 3. MAIN DASHBOARD ---
 st.title("📊 Strategic Growth Engineering Dashboard")
@@ -64,71 +68,78 @@ def highlight_keywords(text, keywords_str):
         text = pattern.sub(f'<mark style="background-color: #FFFF00; color: black; font-weight: bold;">{kw}</mark>', text)
     return text
 
-col_perf, col_format = st.columns(2)
+# --- STREAM 1: PERFORMANCE DNA ---
+st.markdown('<div class="stream-header">📂 STREAM 1: Performance-Based Engineering (Historical CTR)</div>', unsafe_allow_html=True)
+perf_files = st.file_uploader("Upload Historical Performance CSVs", type="csv", accept_multiple_files=True, key="v7_perf_up")
 
-# --- COLUMN 1: PERFORMANCE DATA (FILE 1) ---
-with col_perf:
-    st.subheader("📂 Stream 1: Performance DNA")
-    perf_files = st.file_uploader("Upload Historical Performance CSVs", type="csv", accept_multiple_files=True, key="perf_up")
-    
-    if perf_files:
+if perf_files:
+    try:
         all_dfs = [pd.read_csv(f) for f in perf_files]
-        df_perf = pd.concat(all_dfs, ignore_index=True)
-        df_perf.columns = df_perf.columns.str.strip()
+        df_p = pd.concat(all_dfs, ignore_index=True)
+        df_p.columns = df_p.columns.str.strip()
         
-        # Mapping for Performance Logic
-        c_map = {c.lower(): c for c in df_perf.columns}
-        content_col = c_map.get('message', c_map.get('content', df_perf.columns[0]))
+        c_map = {c.lower(): c for c in df_p.columns}
+        content_col = c_map.get('message', c_map.get('content', df_p.columns[0]))
         ctr_col = c_map.get('ctr', None)
         imp_col = c_map.get('total viewed(users)', c_map.get('impression', c_map.get('sent', None)))
 
         if ctr_col and imp_col:
-            df_perf['CTR_C'] = pd.to_numeric(df_perf[ctr_col].astype(str).str.replace('%', ''), errors='coerce') / 100
-            df_perf['Imp_C'] = pd.to_numeric(df_perf[imp_col].astype(str).str.replace(',', ''), errors='coerce')
-            df_perf['Power_Score'] = (df_perf['CTR_C'] * 0.7) + ((df_perf['Imp_C'] / df_perf['Imp_C'].max()) * 0.3)
-            winners_perf = df_perf.sort_values(by='Power_Score', ascending=False).head(10)
-            st.dataframe(winners_perf[[content_col, ctr_col, imp_col, 'Power_Score']], use_container_width=True)
+            df_p['CTR_C'] = pd.to_numeric(df_p[ctr_col].astype(str).str.replace('%', ''), errors='coerce') / 100
+            df_p['Imp_C'] = pd.to_numeric(df_p[imp_col].astype(str).str.replace(',', ''), errors='coerce')
+            df_p['Power_Score'] = (df_p['CTR_C'] * 0.7) + ((df_p['Imp_C'] / df_p['Imp_C'].max()) * 0.3)
+            winners_p = df_p.sort_values(by='Power_Score', ascending=False).head(10).copy()
             
-            if st.button("🚀 Analyze & Engineer Stream 1"):
+            st.write("### 🏆 Performance Benchmarks")
+            st.dataframe(winners_p[[content_col, ctr_col, imp_col, 'Power_Score']], use_container_width=True)
+            
+            if st.button("🚀 Run Stream 1: Performance DNA Analysis", key="v7_btn_p"):
                 genai.configure(api_key=ACTIVE_KEY)
                 model = genai.GenerativeModel('gemini-1.5-flash')
-                context = winners_perf[[content_col, ctr_col]].to_string(index=False)
-                prompt = f"Using this Performance DNA:\n{context}\nGenerate 10 variations for {prod_description} using keywords {keywords_input} for segment {seg_type} {sub_seg}. Target: {intention}. Output Markdown Table."
-                res = model.generate_content(prompt)
-                st.markdown(highlight_keywords(res.text, keywords_input), unsafe_allow_html=True)
+                context_p = winners_p[[content_col, ctr_col]].to_string(index=False)
+                prompt_p = f"Using Performance DNA:\n{context_p}\nEngineer 10 variations for {prod_description} using keywords {keywords_input} for segment {seg_type} {sub_seg}. Target: {intention}."
+                res_p = model.generate_content(prompt_p)
+                st.markdown(highlight_keywords(res_p.text, keywords_input), unsafe_allow_html=True)
+    except Exception as e:
+        st.error(f"Stream 1 Error: {e}")
 
-# --- COLUMN 2: FORMAT DATA (FILE 2) ---
-with col_format:
-    st.subheader("📂 Stream 2: Format Strategy")
-    format_file = st.file_uploader("Upload Format Template CSV", type="csv", key="format_up")
-    
-    if format_file:
-        df_format = pd.read_csv(format_file)
-        st.write("**Format Skeleton Detected:**")
-        st.dataframe(df_format.head(5), use_container_width=True)
+st.divider()
+
+# --- STREAM 2: FORMAT STRATEGY ---
+st.markdown('<div class="stream-header">📂 STREAM 2: Format-Based Engineering (Style Replication)</div>', unsafe_allow_html=True)
+format_file = st.file_uploader("Upload Format Template CSV", type="csv", key="v7_format_up")
+
+if format_file:
+    try:
+        df_f = pd.read_csv(format_file)
+        st.write("### 📝 Detected Style Skeletons")
+        st.dataframe(df_f.head(5), use_container_width=True)
         
-        if st.button("🚀 Run 10-Row Strategic Engineering (File 2 Style)"):
+        if st.button("🚀 Run Stream 2: Strategic Format Engineering", key="v7_btn_f"):
             if not ACTIVE_KEY:
                 st.error("API Key Missing")
             else:
                 with st.spinner("Engineering Style-Specific Variations..."):
                     genai.configure(api_key=ACTIVE_KEY)
                     model = genai.GenerativeModel('gemini-1.5-flash')
+                    format_context = df_f.to_string(index=False)
                     
-                    format_context = df_format.to_string(index=False)
-                    prompt = f"""
+                    # Using your Strategic Edition Logic
+                    prompt_f = f"""
                     REFERENCE FORMAT DATA: {format_context}
                     TASK: Generate 10 Content Rows. 7 Evolutionary (based on format skeleton), 3 Revolutionary.
                     Parameters: 
                     Product: {prod_description} 
                     Keywords: {keywords_input} 
                     Goal: {intention}
-                    Segment: {seg_type} | {sub_seg} | {spec_prod}
+                    Segment: {seg_type} | {sub_seg} | {seg_reason}
                     
-                    STRICT INSTRUCTION: Replicate the emoji usage, structural segmentation, and character style of the REFERENCE FORMAT DATA.
-                    OUTPUT: Markdown table with: Usage Rank, New Content (File 2 Style), Segmentation Validation, Reference ID, Hit Percentage, Logic Hook.
+                    STRICT INSTRUCTION: Replicate the emoji usage, structural segmentation (e.g., Content/Segmentation/Impression lines), and character style.
+                    OUTPUT: Markdown table with columns: Usage Rank, New Content (File 2 Style), Segmentation Validation, Reference ID, Hit Percentage, Logic Hook.
                     """
                     
-                    response = model.generate_content(prompt)
+                    response_f = model.generate_content(prompt_f)
                     st.success("✅ Style Engineering Complete")
-                    st.markdown(highlight_keywords(response.text, keywords_input), unsafe_allow_html=True)
+                    st.markdown(highlight_keywords(response_f.text, keywords_input), unsafe_allow_html=True)
+                    st.download_button("📥 Download Stream 2 Analysis", response_f.text, file_name="engineered_formats.txt")
+    except Exception as e:
+        st.error(f"Stream 2 Error: {e}")
