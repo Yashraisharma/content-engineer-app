@@ -8,7 +8,7 @@ import re
 ACTIVE_KEY = st.secrets.get("GEMINI_API_KEY", "")
 pd.set_option('display.max_colwidth', None)
 
-st.set_page_config(page_title="Content Engineer Pro | Master Synthesis", layout="wide")
+st.set_page_config(page_title="Content Engineer Pro | Full Visibility", layout="wide")
 
 st.markdown("""
     <style>
@@ -22,31 +22,28 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. SIDEBAR: REORDERED FLOW ---
+# --- 2. SIDEBAR: STRATEGIC FLOW ---
 with st.sidebar:
     st.title("🛡️ Content Engineer Pro")
     
-    # 1. MESSAGE REQUIREMENTS
     st.header("🎯 Message Requirements")
-    keywords_input = st.text_input("Keywords", placeholder="e.g. BOGO, Sale", key="fin_kw")
-    prod_description = st.text_area("Product Description", placeholder="General value prop...", height=80, key="fin_desc")
-    intention = st.text_area("Intention (Inter Prompt)", placeholder="e.g. Conversion, Awareness", height=80, key="fin_int")
+    keywords_input = st.text_input("Keywords", placeholder="e.g. BOGO, Sale", key="v6_kw")
+    prod_description = st.text_area("Product Description", placeholder="General value prop...", height=80, key="v6_desc")
+    intention = st.text_area("Intention (Inter Prompt)", placeholder="e.g. Conversion, Awareness", height=80, key="v6_int")
     
     with st.expander("📍 Target Details (Optional)", expanded=True):
-        specific_product = st.text_input("Specific Product Name", key="fin_spec")
-        segment = st.text_input("Segment", key="fin_seg")
-        sub_segment = st.text_input("Sub-Segment", key="fin_sub")
+        specific_product = st.text_input("Specific Product Name", key="v6_spec")
+        segment = st.text_input("Segment", key="v6_seg")
+        sub_segment = st.text_input("Sub-Segment", key="v6_sub")
 
     st.divider()
 
-    # 2. UNIT ECONOMICS
     st.header("💰 Unit Economics")
     cost_per_view = st.number_input("Cost per Viewed (Rs)", value=0.66, format="%.2f")
     rev_per_click = st.number_input("Revenue per Click (Rs)", value=1000.0)
 
     st.divider()
 
-    # 3. SYSTEM OVERVIEW
     st.header("🌐 System Overview")
     st.markdown("""
     <div class="summary-box">
@@ -54,7 +51,6 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    # 4. SCORING LOGIC
     st.header("⚙️ Scoring & Ranking Logic")
     st.markdown(f"""
     <div class="logic-summary">
@@ -64,7 +60,7 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 # --- 3. PROCESSING ENGINE ---
-def process_data(df):
+def process_data(df, label):
     df.columns = df.columns.str.strip()
     cols_low = [c.lower() for c in df.columns]
     msg_idx = next((i for i, c in enumerate(cols_low) if any(x in c for x in ['message', 'content', 'text'])), 0)
@@ -86,6 +82,14 @@ def process_data(df):
         ranked = df.sort_values(by='Final_Score', ascending=False)
         ranked['CTR_Disp'] = ranked['CTR%'].fillna(0).apply(lambda x: f"{x:.2f}%")
         ranked['Score_Disp'] = ranked['Final_Score'].apply(lambda x: f"{x:.4f}")
+        
+        st.markdown(f"### 📑 {label} Analysis")
+        t1, t2 = st.tabs(["Full Ranking", "Top Efficiency Winners"])
+        with t1:
+            st.dataframe(ranked[[content_col, 'CTR_Disp', v_col, c_col, 'Score_Disp']], use_container_width=True)
+        with t2:
+            st.table(ranked.head(10)[[content_col, 'CTR_Disp', v_col, 'Score_Disp']])
+            
         return ranked, content_col
     return None, None
 
@@ -101,32 +105,28 @@ def highlight_keywords(text, keywords_str):
 st.title("📊 Strategic Content Engineering")
 
 # --- Stream 1 (Top) ---
-st.markdown('<div class="stream-header">📂 STREAM 1: Historical Performance DNA (ROI Analysis)</div>', unsafe_allow_html=True)
-s1_files = st.file_uploader("Upload CSVs (Multiple Supported)", type="csv", accept_multiple_files=True, key="fin_s1")
+st.markdown('<div class="stream-header">📂 STREAM 1: Performance ROI DNA</div>', unsafe_allow_html=True)
+s1_files = st.file_uploader("Upload Performance CSVs", type="csv", accept_multiple_files=True, key="v6_s1")
 
 ranked_s1, c_s1 = None, None
 if s1_files:
     df_s1 = pd.concat([pd.read_csv(f) for f in s1_files], ignore_index=True)
-    ranked_s1, c_s1 = process_data(df_s1)
-    with st.expander("🔍 View Performance Rankings", expanded=True):
-        st.dataframe(ranked_s1[[c_s1, 'CTR_Disp', 'Score_Disp']].head(10), use_container_width=True)
+    ranked_s1, c_s1 = process_data(df_s1, "Stream 1")
 
 st.divider()
 
 # --- Stream 2 (Middle) ---
-st.markdown('<div class="stream-header">📂 STREAM 2: Structural Format & Style Replication</div>', unsafe_allow_html=True)
-s2_file = st.file_uploader("Upload Formatting Template CSV", type="csv", key="fin_s2")
+st.markdown('<div class="stream-header">📂 STREAM 2: Structural Style DNA</div>', unsafe_allow_html=True)
+s2_file = st.file_uploader("Upload Style CSV", type="csv", key="v6_s2")
 
 ranked_s2, c_s2 = None, None
 if s2_file:
     df_s2 = pd.read_csv(s2_file)
-    ranked_s2, c_s2 = process_data(df_s2)
-    with st.expander("🔍 View Formatting Template Winners", expanded=True):
-        st.dataframe(ranked_s2[[c_s2, 'CTR_Disp', 'Score_Disp']].head(5), use_container_width=True)
+    ranked_s2, c_s2 = process_data(df_s2, "Stream 2")
 
 st.divider()
 
-# --- Master Generate Button (Bottom) ---
+# --- Master Generate Button ---
 if st.button("🚀 MASTER GENERATE: SYNTHESIZE PERFORMANCE & STYLE"):
     if not (ranked_s1 is not None or ranked_s2 is not None):
         st.error("Please upload data for at least one stream to generate content.")
@@ -148,7 +148,7 @@ if st.button("🚀 MASTER GENERATE: SYNTHESIZE PERFORMANCE & STYLE"):
         PERFORMANCE DNA (Stream 1):
         {s1_context}
 
-        FORMATTING DNA (Stream 2):
+        STYLE DNA (Stream 2):
         {s2_context}
 
         TASK: Generate 10 Variations (7 Evolutionary, 3 Revolutionary).
