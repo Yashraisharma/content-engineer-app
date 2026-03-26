@@ -8,7 +8,7 @@ import re
 ACTIVE_KEY = st.secrets.get("GEMINI_API_KEY", "")
 pd.set_option('display.max_colwidth', None)
 
-st.set_page_config(page_title="Content Engineer Pro | Unified System", layout="wide")
+st.set_page_config(page_title="Content Engineer Pro | Logic-at-Bottom", layout="wide")
 
 st.markdown("""
     <style>
@@ -24,60 +24,54 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. SIDEBAR: EXECUTIVE SUMMARY & LOGIC ---
+# --- 2. SIDEBAR: REORDERED FLOW ---
 with st.sidebar:
     st.title("🛡️ Content Engineer Pro")
     
-    # Pillar 1: System Overview
+    # 1. MESSAGE REQUIREMENTS (TOP)
+    st.header("🎯 Message Requirements")
+    keywords_input = st.text_input("Keywords", placeholder="e.g. BOGO, Sale", key="f_v5_kw")
+    prod_description = st.text_area("Product Description", placeholder="General value prop...", height=80, key="f_v5_desc")
+    intention = st.text_area("Intention (Inter Prompt)", placeholder="e.g. Conversion, Awareness", height=80, key="f_v5_int")
+    
+    with st.expander("📍 Target Details (Optional)", expanded=True):
+        specific_product = st.text_input("Specific Product Name", key="f_v5_spec")
+        segment = st.text_input("Segment", key="f_v5_seg")
+        sub_segment = st.text_input("Sub-Segment", key="f_v5_sub")
+
+    st.divider()
+
+    # 2. UNIT ECONOMICS
+    st.header("💰 Unit Economics")
+    cost_per_view = st.number_input("Cost per Viewed (Rs)", value=0.66, format="%.2f")
+    rev_per_click = st.number_input("Revenue per Click (Rs)", value=1000.0)
+
+    st.divider()
+
+    # 3. SYSTEM OVERVIEW (BOTTOM HALF)
     st.header("🌐 System Overview")
     st.markdown("""
     <div class="summary-box">
     <b>What this tool does:</b><br>
     This platform transforms raw campaign data into high-ROI marketing copy by bridging <b>Financial Economics</b> and <b>Generative AI</b>.
     <br><br>
-    <b>1. Performance Ranking:</b> Ingests CSVs to calculate real-world profitability (Revenue minus View Costs).
-    <br><br>
-    <b>2. DNA Extraction:</b> Identifies "Efficiency Winners"—messages that hit profit targets with the lowest capital spend.
-    <br><br>
-    <b>3. Result Logic:</b> Uses <i>Gemini 1.5 Pro</i> to reverse-engineer winner DNA into 10 new variations tailored to your specific targeting requirements.
+    <b>Process:</b> Data is ingested, ranked by efficiency, and winners are analyzed by Gemini to generate 10 new strategic variations.
     </div>
     """, unsafe_allow_html=True)
 
-    st.divider()
-
-    # Pillar 2: Scoring Engine
+    # 4. SCORING LOGIC (BOTTOM)
     st.header("⚙️ Scoring & Ranking Logic")
     st.markdown(f"""
     <div class="logic-summary">
-    <b>1. ROI Factor (Efficiency):</b><br>
-    Calculates profit per Rupee spent. High-volume campaigns are penalized if they are "wasteful" to reach the same profit as smaller, leaner campaigns.
+    <b>ROI Factor (Efficiency):</b><br>
+    Profit per Rupee spent. Smaller, high-efficiency campaigns rank higher than wasteful high-volume ones.
     <div class="formula-box">ROI = Net Profit / Total Cost</div>
     
-    <b>2. Scale Validation:</b><br>
-    A "Volume Confidence" multiplier is applied. This prevents 1-click flukes from ranking #1 while ensuring the winner has enough data to be scalable.
+    <b>Scale Validation:</b><br>
+    Volume weighting ensures statistical reliability and scalability.
     <div class="formula-box">Final Score = ROI × [Vol / (Vol + (Avg_Vol × 0.1))]</div>
     </div>
     """, unsafe_allow_html=True)
-
-    st.divider()
-
-    # Pillar 3: Message Requirements (The "Who & Why")
-    st.header("🎯 Message Requirements")
-    keywords_input = st.text_input("Keywords", placeholder="e.g. BOGO, Sale", key="exec_kw")
-    prod_description = st.text_area("Product Description", placeholder="General value prop...", height=80, key="exec_desc")
-    intention = st.text_area("Intention (Inter Prompt)", placeholder="e.g. Conversion, Awareness", height=80, key="exec_int")
-    
-    with st.expander("📍 Target Details (Optional)", expanded=True):
-        specific_product = st.text_input("Specific Product Name", key="exec_spec")
-        segment = st.text_input("Segment", key="exec_seg")
-        sub_segment = st.text_input("Sub-Segment", key="exec_sub")
-
-    st.divider()
-
-    # Pillar 4: Unit Economics (The "How Much")
-    st.header("💰 Unit Economics")
-    cost_per_view = st.number_input("Cost per Viewed (Rs)", value=0.66, format="%.2f")
-    rev_per_click = st.number_input("Revenue per Click (Rs)", value=1000.0)
 
 # --- 3. CORE PROCESSING ENGINE ---
 def process_true_performance(df, label):
@@ -94,7 +88,7 @@ def process_true_performance(df, label):
         df['V_N'] = pd.to_numeric(df[v_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
         df['C_N'] = pd.to_numeric(df[c_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
         
-        # Financial Calcs
+        # Core Calculations
         df['CTR%'] = (df['C_N'] / df['V_N'].replace(0, np.nan)) * 100
         df['Total_Cost'] = df['V_N'] * cost_per_view
         df['Net_Profit'] = (df['C_N'] * rev_per_click) - df['Total_Cost']
@@ -140,17 +134,17 @@ def get_ai_prompt(ranked_df, content_col):
     
     TASK: Generate 10 Variations (7 Evolutionary, 3 Revolutionary).
     RULES:
-    - Evolutionary: Optimize CTA while keeping DNA intact.
-    - Revolutionary: Pivot the angle based on {intention}.
-    - Formatting: Replicate structural segmentation and emoji styles.
+    - Evolutionary: Stay close to DNA context but optimize CTA and Hook.
+    - Revolutionary: Pivot the angle completely based on the {intention}.
+    - Formatting: Replicate structural segmentation and emoji styles from DNA.
     """
 
 # --- 4. MAIN DASHBOARD ---
 st.title("📊 Strategic Content Dashboard")
 
 # Stream 1
-st.markdown('<div class="stream-header">📂 STREAM 1: Performance-Led Innovation</div>', unsafe_allow_html=True)
-s1_files = st.file_uploader("Upload S1 CSVs", type="csv", accept_multiple_files=True, key="s1_exec")
+st.markdown('<div class="stream-header">📂 STREAM 1: Performance Analysis</div>', unsafe_allow_html=True)
+s1_files = st.file_uploader("Upload S1 CSVs", type="csv", accept_multiple_files=True, key="s1_fin")
 if s1_files:
     df_s1 = pd.concat([pd.read_csv(f) for f in s1_files], ignore_index=True)
     ranked_s1, c_s1 = process_true_performance(df_s1, "Stream 1")
@@ -164,7 +158,7 @@ st.divider()
 
 # Stream 2
 st.markdown('<div class="stream-header">📂 STREAM 2: Style & Format Replication</div>', unsafe_allow_html=True)
-s2_file = st.file_uploader("Upload S2 Format CSV", type="csv", key="s2_exec")
+s2_file = st.file_uploader("Upload S2 Format CSV", type="csv", key="s2_fin")
 if s2_file:
     df_s2 = pd.read_csv(s2_file)
     ranked_s2, c_s2 = process_true_performance(df_s2, "Stream 2")
