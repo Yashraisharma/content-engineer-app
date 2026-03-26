@@ -8,7 +8,7 @@ import re
 ACTIVE_KEY = st.secrets.get("GEMINI_API_KEY", "")
 pd.set_option('display.max_colwidth', None)
 
-st.set_page_config(page_title="Content Engineer Pro | Full Requirements", layout="wide")
+st.set_page_config(page_title="Content Engineer Pro | Refined Requirements", layout="wide")
 
 st.markdown("""
     <style>
@@ -35,15 +35,16 @@ with st.sidebar:
     st.divider()
     
     st.header("🎯 Message Requirements")
-    # Core Requirements Expanded
-    keywords_input = st.text_input("Keywords", placeholder="e.g. BOGO, Sale, Limited", key="req_kw")
-    prod_description = st.text_area("Product Description", placeholder="General product value prop...", height=70, key="req_desc")
-    specific_product = st.text_input("Specific Product Name", placeholder="e.g. iPhone 15 Pro", key="req_spec")
-    intention = st.text_input("Intention", placeholder="e.g. Conversion, Awareness, Upsell", key="req_int")
+    # Core Mandatory Requirements
+    keywords_input = st.text_input("Keywords", placeholder="e.g. BOGO, Sale", key="f_v3_kw")
+    prod_description = st.text_area("Product Description", placeholder="General product value prop...", height=70, key="f_v3_desc")
+    intention = st.text_input("Intention", placeholder="e.g. Conversion, Awareness", key="f_v3_int")
     
+    # Optional Targeting Details (Including Specific Product)
     with st.expander("📍 Target Details (Optional)", expanded=True):
-        segment = st.text_input("Segment", placeholder="e.g. Existing Users", key="req_seg")
-        sub_segment = st.text_input("Sub-Segment", placeholder="e.g. High-Spenders (LTV > 5k)", key="req_sub")
+        specific_product = st.text_input("Specific Product Name", placeholder="e.g. iPhone 15 Pro", key="f_v3_spec")
+        segment = st.text_input("Segment", placeholder="e.g. Existing Users", key="f_v3_seg")
+        sub_segment = st.text_input("Sub-Segment", placeholder="e.g. High-Spenders", key="f_v3_sub")
 
     st.divider()
     
@@ -65,7 +66,7 @@ with st.sidebar:
         "4. Efficiency Logic: Lower volume wins if profits match.",
         "5. Scale Validation & BVS/ERS scoring.",
         "6. Final Score visibility per row.",
-        "7. Added Mandatory Message Requirements (Segment, Intention, Product)."
+        "7. Optional Requirements: Specific Product moved to Target Details."
     ]
     for p in history:
         st.markdown(f'<div class="prompt-history">{p}</div>', unsafe_allow_html=True)
@@ -85,7 +86,7 @@ def process_true_performance(df, label):
         df['V_N'] = pd.to_numeric(df[v_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
         df['C_N'] = pd.to_numeric(df[c_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
         
-        # Calculations
+        # Core Financials
         df['CTR%'] = (df['C_N'] / df['V_N'].replace(0, np.nan)) * 100
         df['Total_Cost'] = df['V_N'] * cost_per_view
         df['Net_Profit'] = (df['C_N'] * rev_per_click) - df['Total_Cost']
@@ -115,33 +116,34 @@ def highlight_keywords(text, keywords_str):
         text = pattern.sub(f'<mark style="background-color: #FFFF00; color: black; font-weight: bold;">{kw}</mark>', text)
     return text
 
-# --- 4. MAIN DASHBOARD ---
-st.title("📊 True Performance Requirement-Led Engine")
-
-# AI Generation Prompt Builder
+# AI Prompt Logic
 def get_ai_prompt(ranked_df, content_col):
     context = ranked_df.head(10)[[content_col, 'CTR_Disp']].to_string(index=False)
+    prod_name = specific_product if specific_product else "the main product line"
     return f"""
     ROLE: Senior Growth Content Engineer.
-    CORE PRODUCT: {specific_product}
+    SPECIFIC PRODUCT: {prod_name}
     DESCRIPTION: {prod_description}
-    GOAL/INTENTION: {intention}
-    TARGET SEGMENT: {segment} ({sub_segment})
-    KEYWORDS TO USE: {keywords_input}
+    GOAL: {intention}
+    TARGETING: {segment} | {sub_segment}
+    KEYWORDS: {keywords_input}
     
-    DNA CONTEXT (Top 10 Performers):
+    DNA (Top 10 Performers):
     {context}
     
     TASK: Generate 10 Variations (7 Evolutionary, 3 Revolutionary).
     RULES:
-    - Evolutionary: Stay close to DNA context but optimize the CTA and Hook.
-    - Revolutionary: Pivot the angle completely based on the {intention}.
-    - Formatting: Replicate structural segmentation and emoji styles from DNA.
+    - Evolutionary: Stay close to DNA but optimize CTA.
+    - Revolutionary: Pivot the angle based on {intention}.
+    - Formatting: Replicate structural segmentation and emoji styles.
     """
 
+# --- 4. MAIN DASHBOARD ---
+st.title("📊 Strategic Content Dashboard")
+
 # Stream 1
-st.markdown('<div class="stream-header">📂 STREAM 1: Performance-Led Innovation</div>', unsafe_allow_html=True)
-s1_files = st.file_uploader("Upload S1 CSVs", type="csv", accept_multiple_files=True, key="s1_req")
+st.markdown('<div class="stream-header">📂 STREAM 1: Historical Efficiency Analysis</div>', unsafe_allow_html=True)
+s1_files = st.file_uploader("Upload S1 CSVs", type="csv", accept_multiple_files=True, key="s1_final_v3")
 if s1_files:
     df_s1 = pd.concat([pd.read_csv(f) for f in s1_files], ignore_index=True)
     ranked_s1, c_s1 = process_true_performance(df_s1, "Stream 1")
@@ -154,8 +156,8 @@ if s1_files:
 st.divider()
 
 # Stream 2
-st.markdown('<div class="stream-header">📂 STREAM 2: Style Replication & Format Optimization</div>', unsafe_allow_html=True)
-s2_file = st.file_uploader("Upload S2 Format CSV", type="csv", key="s2_req")
+st.markdown('<div class="stream-header">📂 STREAM 2: Format Strategy & Style Replication</div>', unsafe_allow_html=True)
+s2_file = st.file_uploader("Upload S2 Format CSV", type="csv", key="s2_final_v3")
 if s2_file:
     df_s2 = pd.read_csv(s2_file)
     ranked_s2, c_s2 = process_true_performance(df_s2, "Stream 2")
