@@ -9,7 +9,6 @@ pd.set_option('display.max_colwidth', None)
 
 st.set_page_config(page_title="High-CTR Engineer Pro", layout="wide")
 
-# Custom CSS for a professional "Growth Engineering" look
 st.markdown("""
     <style>
     .main { background-color: #f8f9fa; }
@@ -20,34 +19,34 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. SIDEBAR: PARAMETERS & OPTIONAL TARGETING ---
+# --- 2. SIDEBAR: PARAMETERS & TARGETING ---
 with st.sidebar:
     st.title("🛡️ High-CTR Engineer")
     
     st.header("🎯 Target Parameters")
-    keywords_input = st.text_input("Core Keywords", placeholder="e.g. Refill, Insulin, Safety", key="final_kw")
-    prod_description = st.text_area("Product Details", height=150, key="final_prod")
-    intention = st.text_area("Primary Goal", height=150, key="final_goal")
+    keywords_input = st.text_input("Core Keywords", placeholder="Refill, Safety, Insulin", key="v4_kw")
+    prod_description = st.text_area("Product Details", height=150, key="v4_prod")
+    intention = st.text_area("Primary Goal", height=150, key="v4_goal")
 
     st.divider()
     
     st.header("🔍 Advanced Targeting (Optional)")
-    seg_type = st.text_input("1. Segment Type", placeholder="e.g. Lapsed Users", key="final_type")
-    seg_reason = st.text_input("2. Reason for Segment", placeholder="e.g. 30-Day Inactive", key="final_reason")
-    sub_seg = st.text_input("3. Sub Segment", placeholder="e.g. Chronic/Insulin", key="final_sub")
-    spec_prod = st.text_input("4. Specific Product Base", placeholder="e.g. Lantus", key="final_base")
+    seg_type = st.text_input("1. Segment Type", placeholder="e.g. Lapsed", key="v4_type")
+    seg_reason = st.text_input("2. Reason", placeholder="e.g. 30-Day Gap", key="v4_reason")
+    sub_seg = st.text_input("3. Sub Segment", placeholder="e.g. Insulin", key="v4_sub")
+    spec_prod = st.text_input("4. Specific Product", placeholder="e.g. Lantus", key="v4_base")
 
     st.divider()
     
     st.header("⚙️ Ranking Logic")
-    with st.expander("🔬 High-CTR Attribution", expanded=True):
-        st.markdown('<div class="logic-box"><b>Sure-Shot Formula:</b><br><span class="formula">CTR = (Clicks / Viewed) * 100</span><br><br><b>Weighting:</b><br>80% Creative DNA (CTR)<br>20% Volume Confidence</div>', unsafe_allow_html=True)
-        st.caption("Prioritizes messages that successfully converted a View into a Click.")
+    with st.expander("🔬 CTR Attribution", expanded=True):
+        st.markdown('<div class="logic-box"><b>Sure-Shot Formula:</b><br><span class="formula">CTR = (Clicks / Viewed) * 100</span><br><br><b>Weighting:</b><br>80% Engagement DNA<br>20% Volume Confidence</div>', unsafe_allow_html=True)
+        st.caption("Focuses on messages that convert visual impressions into clicks.")
 
 # --- 3. MAIN DASHBOARD ---
 st.title("📊 High-Performance Campaign Attribution")
 
-uploaded_files = st.file_uploader("Upload Campaign CSVs", type="csv", accept_multiple_files=True, key="final_uploader")
+uploaded_files = st.file_uploader("Upload Campaign CSVs", type="csv", accept_multiple_files=True, key="v4_uploader")
 
 if uploaded_files:
     try:
@@ -68,11 +67,11 @@ if uploaded_files:
             df['Viewed_N'] = pd.to_numeric(df[view_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
             df['Clicks_N'] = pd.to_numeric(df[clicks_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
             
-            # B. CALCULATE CTR PERCENTAGE
+            # B. CALCULATE CTR PERCENTAGE (Clicks/Viewed)
             df['CTR_Decimal'] = (df['Clicks_N'] / df['Viewed_N']).replace([np.inf, -np.inf], 0).fillna(0)
             df['CTR_Percentage'] = (df['CTR_Decimal'] * 100).round(2)
             
-            # C. VOLUME LOGIC (Statistical Confidence)
+            # C. VOLUME LOGIC (Logarithmic scale)
             max_views = df['Viewed_N'].max() if df['Viewed_N'].max() > 0 else 1
             df['Log_Scale'] = np.log1p(df['Viewed_N']) / np.log1p(max_views)
             
@@ -87,20 +86,17 @@ if uploaded_files:
 
             st.subheader("🏆 Step 2: High-CTR Benchmarks (Ranked by Clicks/Viewed)")
             winners = df.sort_values(by='Attribution_Score', ascending=False).head(10).copy()
-            
-            # Clear percentage display
             winners['Final CTR %'] = winners['CTR_Percentage'].astype(str) + '%'
             
             st.table(winners[[id_col, who_col, msg_col, 'Final CTR %', 'Attribution_Score']])
 
-            if st.button("🚀 Step 3: Engineer Content from High-CTR DNA", key="final_btn"):
+            if st.button("🚀 Step 3: Engineer Content from High-CTR DNA", key="v4_btn"):
                 if not ACTIVE_KEY:
-                    st.error("API Key missing! Please check your Streamlit Secrets.")
+                    st.error("API Key missing! Add GEMINI_API_KEY to your Secrets.")
                 else:
                     try:
-                        # PROPER API CONFIGURATION
                         genai.configure(api_key=ACTIVE_KEY)
-                        # Use the exact model name without prefixes for stability
+                        # Fallback to gemini-1.5-flash for stability
                         model = genai.GenerativeModel('gemini-1.5-flash')
                         
                         context_data = ""
@@ -113,19 +109,22 @@ if uploaded_files:
                         WINNERS DATA: {context_data}
                         
                         TASK:
-                        1. Factual Audit: Why did these specific Campaign IDs achieve high CTRs (Clicks/Viewed)?
+                        1. Factual Audit: Why did these specific IDs achieve high CTRs (Clicks/Viewed)?
                         2. Engineer 10 Variations (7 Evolutionary, 3 Revolutionary).
                         3. Table columns: Usage Rank, New Content, Reference ID, Source Segment, Hit %, Reasoning.
                         """
                         
-                        with st.spinner("Analyzing high-performance DNA..."):
+                        with st.spinner("Engineering high-performance variations..."):
                             response = model.generate_content(prompt)
                             st.success("✅ Engineering Complete")
                             st.markdown(response.text)
                             
                     except Exception as api_err:
-                        if "429" in str(api_err):
-                            st.error("⚠️ Quota Reached (20/day). Please try again tomorrow.")
+                        err_str = str(api_err)
+                        if "429" in err_str:
+                            st.error("⚠️ **Daily Quota Reached:** You've hit the limit for today. Results cannot be generated until tomorrow.")
+                        elif "404" in err_str:
+                            st.error("⚠️ **Model Access Error:** Please verify your API key and model availability in Google AI Studio.")
                         else:
                             st.error(f"API Error: {api_err}")
         else:
