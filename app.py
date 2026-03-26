@@ -4,8 +4,10 @@ from google import genai
 import numpy as np
 
 # --- 1. CONFIG & UI ---
+# Try to get the key, but don't crash if it's missing
 ACTIVE_KEY = st.secrets.get("GEMINI_API_KEY", "")
 pd.set_option('display.max_colwidth', None)
+
 st.set_page_config(page_title="High-CTR Engineer Pro", layout="wide")
 
 st.markdown("""
@@ -23,29 +25,30 @@ with st.sidebar:
     st.title("🛡️ High-CTR Engineer")
     
     st.header("🎯 Target Parameters")
-    keywords_input = st.text_input("Core Keywords", placeholder="e.g. Refill, Insulin, Safety")
-    prod_description = st.text_area("Product Details", height=150)
-    intention = st.text_area("Primary Goal", height=150)
+    keywords_input = st.text_input("Core Keywords", placeholder="e.g. Refill, Insulin, Safety", key="kw_input")
+    prod_description = st.text_area("Product Details", height=150, key="prod_desc")
+    intention = st.text_area("Primary Goal", height=150, key="goal_input")
 
     st.divider()
     
     st.header("🔍 Advanced Targeting (Optional)")
-    seg_type = st.text_input("1. Segment Type", placeholder="e.g. Lapsed Users")
-    seg_reason = st.text_input("2. Reason for Segment", placeholder="e.g. 30-Day Inactive")
-    sub_seg = st.text_input("3. Sub Segment", placeholder="e.g. Chronic/Insulin")
-    spec_prod = st.text_input("4. Specific Product Base", placeholder="e.g. Lantus")
+    seg_type = st.text_input("1. Segment Type", placeholder="e.g. Lapsed Users", key="s_type")
+    seg_reason = st.text_input("2. Reason for Segment", placeholder="e.g. 30-Day Inactive", key="s_reason")
+    sub_seg = st.text_input("3. Sub Segment", placeholder="e.g. Chronic/Insulin", key="s_sub")
+    spec_prod = st.text_input("4. Specific Product Base", placeholder="e.g. Lantus", key="s_prod")
 
     st.divider()
     
     st.header("⚙️ Ranking Logic")
     with st.expander("🔬 CTR Logic", expanded=True):
-        st.markdown('<div class="logic-box"><b>Sure-Shot Formula:</b><br><span class="formula">CTR = (Clicks / Viewed) * 100</span><br><br><b>Weighting:</b><br>80% CTR Performance<br>20% Volume Confidence</div>', unsafe_allow_html=True)
-        st.caption("This prioritizes messages that successfully converted views into clicks.")
+        st.markdown('<div class="logic-box"><b>Sure-Shot Formula:</b><br><span class="formula">CTR = (Clicks / Viewed) * 100</span><br><br><b>Weighting:</b><br>80% Engagement DNA<br>20% Volume Confidence</div>', unsafe_allow_html=True)
+        st.caption("Prioritizes messages that stop the scroll and convert views to clicks.")
 
 # --- 3. MAIN DASHBOARD ---
 st.title("📊 High-Performance Campaign Attribution")
 
-uploaded_files = st.file_uploader("Upload Campaign CSVs", type="csv", accept_multiple_files=True)
+# UNIQUE KEY added to file_uploader to prevent DuplicateElementId error
+uploaded_files = st.file_uploader("Upload Campaign CSVs", type="csv", accept_multiple_files=True, key="main_uploader")
 
 if uploaded_files:
     try:
@@ -67,7 +70,6 @@ if uploaded_files:
             df['Clicks_N'] = pd.to_numeric(df[clicks_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
             
             # B. CALCULATE ACTUAL CTR PERCENTAGE (Clicks/Viewed)
-            # Avoid division by zero
             df['CTR_Decimal'] = (df['Clicks_N'] / df['Viewed_N']).replace([np.inf, -np.inf], 0).fillna(0)
             df['CTR_Percentage'] = (df['CTR_Decimal'] * 100).round(2)
             
@@ -75,7 +77,7 @@ if uploaded_files:
             max_views = df['Viewed_N'].max() if df['Viewed_N'].max() > 0 else 1
             df['Log_Scale'] = np.log1p(df['Viewed_N']) / np.log1p(max_views)
             
-            # D. FINAL ATTRIBUTION SCORE (Weighted heavily toward CTR)
+            # D. FINAL ATTRIBUTION SCORE
             df['Attribution_Score'] = (df['CTR_Decimal'] * 0.8) + (df['Log_Scale'] * 0.2)
 
             # --- DISPLAY ---
@@ -87,30 +89,30 @@ if uploaded_files:
             st.subheader("🏆 Step 2: High-CTR Benchmarks (Ranked by Clicks/Viewed)")
             winners = df.sort_values(by='Attribution_Score', ascending=False).head(10).copy()
             
-            # Formatted column for display
+            # Clean display formatting
             winners['Final CTR %'] = winners['CTR_Percentage'].astype(str) + '%'
             
             st.table(winners[[id_col, who_col, msg_col, 'Final CTR %', 'Attribution_Score']])
 
             if st.button("🚀 Step 3: Engineer Content from High-CTR DNA"):
                 if not ACTIVE_KEY:
-                    st.error("API Key missing! Please check Secrets.")
+                    st.error("API Key missing! Please check your Streamlit Secrets (GEMINI_API_KEY).")
                 else:
                     try:
                         client = genai.Client(api_key=ACTIVE_KEY)
-                        context = ""
+                        context_data = ""
                         for _, row in winners.iterrows():
-                            context += f"Campaign ID: {row[id_col]} | CTR: {row['Final CTR %']} | Who: {row.get(who_col)} | Message: {row[msg_col]}\n"
+                            context_data += f"Campaign ID: {row[id_col]} | CTR: {row['Final CTR %']} | Segment: {row.get(who_col)} | Message: {row[msg_col]}\n"
 
                         prompt = f"""
                         Analyze these High-CTR Winners for the segment: {seg_type} {sub_seg}.
                         TARGET GOAL: {intention}
-                        WINNERS DATA: {context}
+                        WINNERS DATA: {context_data}
                         
                         TASK:
-                        1. Factual Audit: Explain why these Campaign IDs achieved high (Clicks/Viewed) CTRs.
+                        1. Factual Audit: Why did these Campaign IDs achieve high CTRs (Clicks/Viewed)?
                         2. Engineer 10 Variations (7 Evolutionary, 3 Revolutionary).
-                        3. Every row must show: Reference ID, New Content, Source Segment, Hit %, Reasoning.
+                        3. Table columns: Usage Rank, New Content, Reference ID, Source Segment, Hit %, Reasoning.
                         """
                         
                         with st.spinner("Analyzing high-performance DNA..."):
@@ -118,103 +120,15 @@ if uploaded_files:
                             st.success("✅ Engineering Complete")
                             st.markdown(response.text)
                             
-                    except Exception as e:
-                        if "429" in str(e):
+                    except Exception as api_err:
+                        if "429" in str(api_err):
                             st.error("⚠️ Daily API Quota Reached. Please try again tomorrow.")
                         else:
-                            st.error(f"Error: {e}")
+                            st.error(f"API Error: {api_err}")
         else:
-            st.error("CSV must contain: Campaign ID, Message, Total Viewed(users), and Total Clicked(users).")
+            st.error("CSV Headers missing: Need 'Campaign ID', 'Message', 'Total Viewed(users)', and 'Total Clicked(users)'.")
 
     except Exception as e:
-        st.error(f"System Error: {e}")
-    st.divider()
-    
-    st.header("⚙️ Ranking Logic")
-    with st.expander("🔬 High-CTR Formula", expanded=True):
-        st.markdown('<div class="logic-box"><b>Sure-Shot Score:</b><br><span class="formula">(CTR*0.8) + (LogScale*0.2)</span></div>', unsafe_allow_html=True)
-        st.caption("Prioritizes messages with the highest engagement DNA while filtering for statistical flukes.")
-
-# --- 3. MAIN DASHBOARD ---
-st.title("📊 High-Performance Campaign Attribution")
-
-uploaded_files = st.file_uploader("Upload Campaign CSVs", type="csv", accept_multiple_files=True)
-
-if uploaded_files:
-    try:
-        all_dfs = [pd.read_csv(f) for f in uploaded_files]
-        df = pd.concat(all_dfs, ignore_index=True)
-        df.columns = df.columns.str.strip()
-
-        col_map = {c.lower(): c for c in df.columns}
-        id_col = col_map.get('campaign id', None)
-        msg_col = col_map.get('message', None)
-        who_col = col_map.get('who query', None)
-        sent_col = col_map.get('total sent(users)', None)
-        clicks_col = col_map.get('total clicked(users)', None)
-
-        if all([id_col, msg_col, sent_col, clicks_col]):
-            # A. DATA CLEANING & REAL CTR CALCULATION
-            df['Sent_N'] = pd.to_numeric(df[sent_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
-            df['Clicks_N'] = pd.to_numeric(df[clicks_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
-            
-            # Calculate Actual CTR %
-            df['Real_CTR_Perc'] = (df['Clicks_N'] / df['Sent_N']).replace([np.inf, -np.inf], 0).fillna(0)
-            
-            # B. LOGARITHMIC SCALE (For volume confidence)
-            max_sent = df['Sent_N'].max() if df['Sent_N'].max() > 0 else 1
-            df['Log_Scale'] = np.log1p(df['Sent_N']) / np.log1p(max_sent)
-            
-            # C. FINAL RANKING (80% CTR / 20% Scale)
-            df['Attribution_Score'] = (df['Real_CTR_Perc'] * 0.8) + (df['Log_Scale'] * 0.2)
-
-            # --- DISPLAY ---
-            st.subheader("🔍 Step 1: Raw Campaign Audit (All Columns)")
-            st.dataframe(df, use_container_width=True)
-
-            st.divider()
-
-            st.subheader("🏆 Step 2: High-CTR Benchmarks (Top 10)")
-            winners = df.sort_values(by='Attribution_Score', ascending=False).head(10).copy()
-            
-            # Create a display column for CTR as a readable percentage
-            winners['CTR %'] = (winners['Real_CTR_Perc'] * 100).round(2).astype(str) + '%'
-            
-            st.table(winners[[id_col, who_col, msg_col, 'CTR %', 'Attribution_Score']])
-
-            if st.button("🚀 Step 3: Engineer 10 Variations from High-CTR DNA"):
-                if not ACTIVE_KEY:
-                    st.error("API Key missing!")
-                else:
-                    try:
-                        client = genai.Client(api_key=ACTIVE_KEY)
-                        context = ""
-                        for _, row in winners.iterrows():
-                            context += f"ID: {row[id_col]} | CTR: {row['CTR %']} | Message: {row[msg_col]}\n"
-
-                        prompt = f"""
-                        Analyze these High-CTR Winners for segment: {seg_type} {sub_seg}.
-                        TARGET GOAL: {intention}
-                        WINNERS DATA: {context}
-                        
-                        TASK:
-                        1. Factual Audit: Why did these specific Campaign IDs achieve such high CTRs?
-                        2. Engineer 10 Variations (7 Evolutionary, 3 Revolutionary).
-                        3. Every row must show: Reference ID, New Content, Source Segment, Hit %, Reasoning.
-                        """
-                        
-                        with st.spinner("Analyzing high-performance DNA..."):
-                            response = client.models.generate_content(model="gemini-3-flash", contents=prompt)
-                            st.success("✅ Engineering Complete")
-                            st.markdown(response.text)
-                            
-                    except Exception as e:
-                        if "429" in str(e):
-                            st.error("⚠️ Quota Reached (20/day). Please try again tomorrow.")
-                        else:
-                            st.error(f"Error: {e}")
-        else:
-            st.error("Missing columns: Campaign ID, Message, Total Sent, or Total Clicked.")
-
-    except Exception as e:
-        st.error(f"System Error: {e}")
+        st.error(f"Critical System Error: {e}")
+else:
+    st.info("👋 Upload your campaign CSVs to start the attribution engine.")
