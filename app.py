@@ -8,7 +8,7 @@ import re
 ACTIVE_KEY = st.secrets.get("GEMINI_API_KEY", "")
 pd.set_option('display.max_colwidth', None)
 
-st.set_page_config(page_title="Content Engineer Pro | Strategic Edition", layout="wide")
+st.set_page_config(page_title="Content Engineer Pro | Scoring Edition", layout="wide")
 
 st.markdown("""
     <style>
@@ -23,7 +23,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. SIDEBAR: PARAMETERS & LOGIC SUMMARY ---
+# --- 2. SIDEBAR: PARAMETERS & TECHNICAL SCORING SUMMARY ---
 with st.sidebar:
     st.title("🛡️ Content Engineer Pro")
     
@@ -32,27 +32,27 @@ with st.sidebar:
     rev_per_click = st.number_input("Revenue per Click (Rs)", value=1000.0)
     
     st.header("🎯 Target Parameters")
-    keywords_input = st.text_input("Keywords", key="f_v_kw")
-    prod_description = st.text_area("Product Details", height=80, key="f_v_prod")
+    keywords_input = st.text_input("Keywords", key="final_v2_kw")
+    prod_description = st.text_area("Product Details", height=80, key="final_v2_prod")
 
     st.divider()
     
-    # --- DYNAMIC LOGIC SUMMARY (BOTTOM OF SIDEBAR) ---
-    st.header("⚙️ Ranking Logic Summary")
+    # --- TECHNICAL SCORING SUMMARY ---
+    st.header("⚙️ Performance Scoring Logic")
     st.markdown(f"""
     <div class="logic-summary">
-    <b>1. Financial Foundation:</b><br>
-    Every row is stress-tested against your costs.
-    <div class="formula-box">Profit = (Clicks × {rev_per_click}) - (Views × {cost_per_view})</div>
+    <b>How the Final Score is calculated:</b><br><br>
     
-    <b>2. Efficiency Over Spend:</b><br>
-    We rank by <b>ROI Factor</b>. If two messages make the same profit, the one with <b>fewer views</b> wins because it achieved results with less capital.
+    <b>Step 1: ROI Factor</b><br>
+    We determine efficiency by dividing Profit by Cost.
+    <div class="formula-box">ROI = [(Clicks × {rev_per_click}) - (Views × {cost_per_view})] / (Views × {cost_per_view})</div>
     
-    <b>3. The Truth in Data:</b><br>
-    By displaying <b>CTR</b> and <b>Clicks</b> alongside ROI, we ensure the winner is based on actual human engagement, not just luck.
+    <b>Step 2: Volume Weighting</b><br>
+    To ensure a high ROI isn't just a "lucky" 1-click fluke, we multiply it by a <b>Confidence Factor</b> based on average campaign volume.
+    <div class="formula-box">Final Score = ROI × [Vol / (Vol + (Avg_Vol × 0.1))]</div>
     
-    <b>4. Scale Validation:</b><br>
-    A small volume penalty is applied to 1-click flukes to ensure the Top 10 are reliable for scaling.
+    <b>The Efficiency Winner:</b><br>
+    If two campaigns make the same profit, the one with <b>fewer views</b> gets a higher score because it achieved the result with less capital investment.
     </div>
     """, unsafe_allow_html=True)
 
@@ -68,30 +68,34 @@ def process_true_performance(df, label):
     if view_idx is not None and click_idx is not None:
         content_col, v_col, c_col = df.columns[msg_idx], df.columns[view_idx], df.columns[click_idx]
         
+        # Numeric Sanitization
         df['V_N'] = pd.to_numeric(df[v_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
         df['C_N'] = pd.to_numeric(df[c_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
         
-        # Core Calculations
+        # Calculations
         df['CTR%'] = (df['C_N'] / df['V_N'].replace(0, np.nan)) * 100
         df['Total_Cost'] = df['V_N'] * cost_per_view
         df['Net_Profit'] = (df['C_N'] * rev_per_click) - df['Total_Cost']
         
-        # Ranking Logic: ROI Factor (Campaign B vs A Logic)
+        # ROI Factor (Efficiency)
         df['ROI_Factor'] = (df['Net_Profit'] / df['Total_Cost'].replace(0, np.nan))
         
-        # Final Score: ROI weighted by Volume to avoid flukes
+        # Scale-Weighted Final Score
         avg_v = df['V_N'].mean()
         df['Final_Score'] = df['ROI_Factor'] * (df['V_N'] / (df['V_N'] + (avg_v * 0.1)))
         
+        # Sorting
         ranked = df.sort_values(by='Final_Score', ascending=False)
         ranked['CTR_Disp'] = ranked['CTR%'].fillna(0).apply(lambda x: f"{x:.2f}%")
-        ranked['Profit_Disp'] = ranked['Net_Profit'].apply(lambda x: f"₹{x:,.0f}")
+        ranked['Score_Disp'] = ranked['Final_Score'].apply(lambda x: f"{x:.4f}")
         
-        t1, t2 = st.tabs(["📑 Full Business Ranking", "🏆 Top 10 High-Efficiency Winners"])
+        # UI TABS
+        t1, t2 = st.tabs([f"📑 Full {label} Ranking", f"🏆 Top 10 High-Efficiency Winners"])
         with t1:
-            st.dataframe(ranked[[content_col, 'CTR_Disp', v_col, c_col, 'Profit_Disp', 'Final_Score']], use_container_width=True)
+            # Removed Profit_Disp, Added Final_Score/Score_Disp
+            st.dataframe(ranked[[content_col, 'CTR_Disp', v_col, c_col, 'Score_Disp']], use_container_width=True)
         with t2:
-            st.table(ranked.head(10)[[content_col, 'CTR_Disp', v_col, 'Profit_Disp']])
+            st.table(ranked.head(10)[[content_col, 'CTR_Disp', v_col, 'Score_Disp']])
             
         return ranked, content_col
     return None, None
@@ -105,15 +109,15 @@ def highlight_keywords(text, keywords_str):
     return text
 
 # --- 4. MAIN DASHBOARD ---
-st.title("📊 Financial Content Engineering Dashboard")
+st.title("📊 Efficiency-Weighted Content Engineering")
 
 # Stream 1
-st.markdown('<div class="stream-header">📂 STREAM 1: Performance-Led Innovation</div>', unsafe_allow_html=True)
-s1_files = st.file_uploader("Upload S1 CSVs", type="csv", accept_multiple_files=True, key="s1_final_v")
+st.markdown('<div class="stream-header">📂 STREAM 1: Historical Efficiency Analysis</div>', unsafe_allow_html=True)
+s1_files = st.file_uploader("Upload S1 CSVs", type="csv", accept_multiple_files=True, key="s1_final_v2")
 if s1_files:
     df_s1 = pd.concat([pd.read_csv(f) for f in s1_files], ignore_index=True)
     ranked_s1, c_s1 = process_true_performance(df_s1, "Stream 1")
-    if ranked_s1 is not None and st.button("🚀 Run Strategic Engineering"):
+    if ranked_s1 is not None and st.button("🚀 Run S1 Strategic Engineering"):
         genai.configure(api_key=ACTIVE_KEY)
         model = genai.GenerativeModel('gemini-1.5-flash')
         context = ranked_s1.head(10)[[c_s1, 'CTR_Disp']].to_string(index=False)
@@ -123,12 +127,12 @@ if s1_files:
 st.divider()
 
 # Stream 2
-st.markdown('<div class="stream-header">📂 STREAM 2: Format & Style Replication</div>', unsafe_allow_html=True)
-s2_file = st.file_uploader("Upload S2 Format CSV", type="csv", key="s2_final_v")
+st.markdown('<div class="stream-header">📂 STREAM 2: Style Replication & Format Optimization</div>', unsafe_allow_html=True)
+s2_file = st.file_uploader("Upload S2 Format CSV", type="csv", key="s2_final_v2")
 if s2_file:
     df_s2 = pd.read_csv(s2_file)
     ranked_s2, c_s2 = process_true_performance(df_s2, "Stream 2")
-    if ranked_s2 is not None and st.button("🚀 Run Style-Replication Engineering"):
+    if ranked_s2 is not None and st.button("🚀 Run S2 Style-Replication Engineering"):
         genai.configure(api_key=ACTIVE_KEY)
         model = genai.GenerativeModel('gemini-1.5-flash')
         context = ranked_s2.head(10)[[c_s2, 'CTR_Disp']].to_string(index=False)
