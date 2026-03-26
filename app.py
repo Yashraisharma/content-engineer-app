@@ -10,23 +10,25 @@ pd.set_option('display.max_colwidth', None)
 
 st.set_page_config(page_title="Content Engineer Pro | Strategic Edition", layout="wide")
 
-# Custom UI Styling - Fixed for Sidebar Formula Visibility
+# Custom UI Styling - Optimized for Sidebar Visibility and Form Factor
 st.markdown("""
     <style>
     .main { background-color: #f8f9fa; }
     .stButton>button { width: 100%; border-radius: 5px; height: 3em; background-color: #007bff; color: white; font-weight: bold; }
     mark { border-radius: 4px; padding: 0 2px; }
     
-    /* This fix ensures the sidebar content and formulas fit the box */
+    /* Ensures Sidebar content and formulas fit the container */
     section[data-testid="stSidebar"] { width: 350px !important; }
     [data-testid="stSidebar"] .stMarkdown { word-break: break-word; }
     .formula-box { 
         background-color: #f0f2f6; 
-        padding: 10px; 
-        border-radius: 5px; 
-        font-family: monospace; 
-        font-size: 0.85em;
-        line-height: 1.4;
+        padding: 12px; 
+        border-radius: 8px; 
+        font-family: 'Courier New', monospace; 
+        font-size: 0.9em;
+        line-height: 1.5;
+        border-left: 5px solid #007bff;
+        color: #31333F;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -38,8 +40,10 @@ with st.sidebar:
     # SECTION 1: CAMPAIGN PARAMETERS (TOP)
     st.header("🎯 Campaign Parameters")
     keywords_input = st.text_input("Target Keywords", placeholder="e.g. BOGO, Sale, Hygiene")
-    prod_description = st.text_area("Product Details", height=120, placeholder="Describe the product...")
-    intention = st.text_input("Primary Goal", placeholder="e.g. Maximize CTR")
+    
+    # Both Product Details and Primary Goal are now large text areas
+    prod_description = st.text_area("Product Details", height=120, placeholder="Describe the product or service...")
+    intention = st.text_area("Primary Goal", height=100, placeholder="e.g. Maximize CTR, drive 500 app installs, or increase repeat purchases...")
     
     st.divider()
 
@@ -57,23 +61,23 @@ with st.sidebar:
     
     with st.expander("1. Firm Ranking Engine", expanded=True):
         st.write("**Statistical Weighting:**")
-        # Fixed: Using a styled div instead of LaTeX to ensure it fits the sidebar width
+        # Custom HTML box to ensure the formula is fully visible and styled
         st.markdown("""<div class="formula-box">Score = (CTR × 0.7) + (Vol × 0.3)</div>""", unsafe_allow_html=True)
-        st.caption("Prioritizes high-CTR creative only if it has significant Impression scale.")
+        st.caption("Prioritizes high-CTR creative only if it has significant Impression scale (Volume).")
 
     with st.expander("2. 7+3 Engineering Strategy", expanded=True):
         st.write("**Evolutionary (7 Rows):**")
-        st.caption("Maps 'Winning Skeletons' and swaps in new keywords.")
+        st.caption("Maps 'Winning Skeletons' (emoji use, hook type, syntax) and swaps in new keywords.")
         st.write("**Revolutionary (3 Rows):**")
-        st.caption("Pivots to new psychological angles (Social Proof, Scarcity).")
+        st.caption("Pivots to new psychological angles (Social Proof, Scarcity, etc.) while keeping quality standards.")
 
     with st.expander("3. Validation & Mapping", expanded=True):
         st.write("**Hit % Estimation:**")
         st.caption("AI self-audit of structural alignment with Reference IDs.")
         st.write("**Semantic Highlighting:**")
-        st.caption("Visual confirmation of keyword integration.")
+        st.caption("Visual confirmation that keywords are integrated correctly.")
 
-# --- 3. MAIN PAGE ---
+# --- 3. MAIN PAGE: DATA & OUTPUT ---
 st.title("📊 Strategic Content Engineering Dashboard")
 
 def highlight_keywords(text, keywords_str):
@@ -92,46 +96,59 @@ if uploaded_files:
         df = pd.concat(all_dfs, ignore_index=True)
         df.columns = df.columns.str.strip()
         
+        # Column Identification Logic
         col_map = {c.lower(): c for c in df.columns}
         content_col = col_map.get('content', df.columns[0])
         ctr_col = col_map.get('ctr', None)
         imp_col = col_map.get('impression', col_map.get('sent', col_map.get('delivered', None)))
 
         if ctr_col and imp_col:
+            # Firm Logic Normalization
             df['CTR_Clean'] = pd.to_numeric(df[ctr_col].astype(str).str.replace('%', ''), errors='coerce') / 100
             df['Imp_Clean'] = pd.to_numeric(df[imp_col].astype(str).str.replace(',', ''), errors='coerce')
+            
+            # Weighted Score Calculation
             df['Power_Score'] = (df['CTR_Clean'] * 0.7) + ((df['Imp_Clean'] / df['Imp_Clean'].max()) * 0.3)
             winners = df.sort_values(by='Power_Score', ascending=False).head(10).copy()
         else:
             winners = df.head(10).copy()
 
-        t1, t2 = st.tabs(["📂 All Uploaded Data", "🏆 Ranked Winners"])
+        # Data Display Tabs
+        t1, t2 = st.tabs(["📂 All Uploaded Data", "🏆 Performance Benchmarks (Ranked Winners)"])
         with t1: st.dataframe(df, use_container_width=True)
         with t2: st.dataframe(winners[[content_col, ctr_col, imp_col, 'Power_Score']], use_container_width=True)
 
         if st.button("🚀 Run 10-Row Strategic Engineering"):
             if not ACTIVE_KEY:
-                st.error("API Key not found in Secrets!")
+                st.error("API Key not found in Secrets! Please check your Streamlit Cloud settings.")
             else:
-                with st.spinner("Engineering high-fidelity variations..."):
+                with st.spinner("Engineering high-fidelity variations based on your Winners..."):
                     client = genai.Client(api_key=ACTIVE_KEY)
                     winners['Ref_ID'] = [f"Winner #{i+1}" for i in range(len(winners))]
                     
+                    # Context building for the AI
                     winners_context = ""
                     for _, row in winners.iterrows():
                         winners_context += f"--- {row['Ref_ID']} ---\nFULL CONTENT: {row[content_col]}\nCTR: {row.get(ctr_col, 'N/A')}\n\n"
 
                     prompt = f"""
                     REFERENCE DATA: {winners_context}
-                    TASK: Generate 10 Content Rows. 7 Evolutionary, 3 Revolutionary.
-                    Product: {prod_description} | Keywords: {keywords_input} | Goal: {intention}
-                    OUTPUT: Markdown table with columns: Usage Rank, New Content, Segmentation, Reference ID, Reference Content (Full), Hit Percentage, Reasoning.
+                    TASK: Generate 10 Content Rows. 
+                    Strategy: 7 Evolutionary (Structure-matched), 3 Revolutionary (Pivot angles).
+                    Context: Product: {prod_description} | Keywords: {keywords_input} | Goal: {intention}
+                    
+                    OUTPUT: Markdown table with EXACTLY these columns: 
+                    Usage Rank, New Content, Segmentation, Reference ID, Reference Content (Full), Hit Percentage, Reasoning.
                     """
                     
                     response = client.models.generate_content(model="gemini-3-flash-preview", contents=prompt)
                     st.success("✅ Engineering Complete")
-                    st.markdown(highlight_keywords(response.text, keywords_input), unsafe_allow_html=True)
-                    st.download_button("📥 Download Analysis", response.text, file_name="engineered_content.txt")
+                    
+                    # Highlight keywords in the markdown table
+                    final_html = highlight_keywords(response.text, keywords_input)
+                    st.markdown(final_html, unsafe_allow_html=True)
+                    
+                    st.download_button("📥 Download Analysis Result", response.text, file_name="engineered_content_audit.txt")
 
     except Exception as e:
         st.error(f"System Error: {e}")
