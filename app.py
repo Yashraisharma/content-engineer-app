@@ -10,12 +10,24 @@ pd.set_option('display.max_colwidth', None)
 
 st.set_page_config(page_title="Content Engineer Pro | Strategic Edition", layout="wide")
 
-# Custom UI Styling
+# Custom UI Styling - Fixed for Sidebar Formula Visibility
 st.markdown("""
     <style>
     .main { background-color: #f8f9fa; }
     .stButton>button { width: 100%; border-radius: 5px; height: 3em; background-color: #007bff; color: white; font-weight: bold; }
     mark { border-radius: 4px; padding: 0 2px; }
+    
+    /* This fix ensures the sidebar content and formulas fit the box */
+    section[data-testid="stSidebar"] { width: 350px !important; }
+    [data-testid="stSidebar"] .stMarkdown { word-break: break-word; }
+    .formula-box { 
+        background-color: #f0f2f6; 
+        padding: 10px; 
+        border-radius: 5px; 
+        font-family: monospace; 
+        font-size: 0.85em;
+        line-height: 1.4;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -26,7 +38,7 @@ with st.sidebar:
     # SECTION 1: CAMPAIGN PARAMETERS (TOP)
     st.header("🎯 Campaign Parameters")
     keywords_input = st.text_input("Target Keywords", placeholder="e.g. BOGO, Sale, Hygiene")
-    prod_description = st.text_area("Product Details", height=120, placeholder="Describe the product or service...")
+    prod_description = st.text_area("Product Details", height=120, placeholder="Describe the product...")
     intention = st.text_input("Primary Goal", placeholder="e.g. Maximize CTR")
     
     st.divider()
@@ -34,9 +46,8 @@ with st.sidebar:
     # SECTION 2: PROJECT SUMMARY
     st.header("📋 Project Summary")
     st.write("""
-    This project is a growth marketing tool that transforms historical 
-    campaign data into optimized content. It identifies 
-    proven success patterns and evolves them into 10 variations.
+    This tool transforms historical campaign data into optimized content. 
+    It identifies proven success patterns and evolves them into 10 high-performing variations.
     """)
     
     st.divider()
@@ -46,7 +57,8 @@ with st.sidebar:
     
     with st.expander("1. Firm Ranking Engine", expanded=True):
         st.write("**Statistical Weighting:**")
-        st.latex(r"Score = (CTR \times 0.7) + (Volume \times 0.3)")
+        # Fixed: Using a styled div instead of LaTeX to ensure it fits the sidebar width
+        st.markdown("""<div class="formula-box">Score = (CTR × 0.7) + (Vol × 0.3)</div>""", unsafe_allow_html=True)
         st.caption("Prioritizes high-CTR creative only if it has significant Impression scale.")
 
     with st.expander("2. 7+3 Engineering Strategy", expanded=True):
