@@ -8,7 +8,7 @@ import re
 ACTIVE_KEY = st.secrets.get("GEMINI_API_KEY", "")
 pd.set_option('display.max_colwidth', None)
 
-st.set_page_config(page_title="Content Engineer Pro | Symmetrical UI", layout="wide")
+st.set_page_config(page_title="Content Engineer Pro | Strategic Flow", layout="wide")
 
 st.markdown("""
     <style>
@@ -24,30 +24,31 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. SIDEBAR: THE FULL REQUIREMENT ENGINE ---
+# --- 2. SIDEBAR: REORGANIZED FLOW ---
 with st.sidebar:
     st.title("🛡️ Content Engineer Pro")
     
+    # --- SECTION 1: MESSAGE REQUIREMENTS (TOP) ---
+    st.header("🎯 Message Requirements")
+    keywords_input = st.text_input("Keywords", placeholder="e.g. BOGO, Sale", key="flow_kw")
+    
+    # Symmetrical Text Areas
+    prod_description = st.text_area("Product Description", placeholder="General product value prop...", height=80, key="flow_desc")
+    intention = st.text_area("Intention (Inter Prompt)", placeholder="e.g. Conversion, Awareness, Upsell", height=80, key="flow_int")
+    
+    # Optional Targeting Details
+    with st.expander("📍 Target Details (Optional)", expanded=True):
+        specific_product = st.text_input("Specific Product Name", placeholder="e.g. iPhone 15 Pro", key="flow_spec")
+        segment = st.text_input("Segment", placeholder="e.g. Existing Users", key="flow_seg")
+        sub_segment = st.text_input("Sub-Segment", placeholder="e.g. High-Spenders", key="flow_sub")
+
+    st.divider()
+
+    # --- SECTION 2: UNIT ECONOMICS (BELOW REQUIREMENTS) ---
     st.header("💰 Unit Economics")
     cost_per_view = st.number_input("Cost per Viewed (Rs)", value=0.66, format="%.2f")
     rev_per_click = st.number_input("Revenue per Click (Rs)", value=1000.0)
     
-    st.divider()
-    
-    st.header("🎯 Message Requirements")
-    # Core Mandatory Requirements
-    keywords_input = st.text_input("Keywords", placeholder="e.g. BOGO, Sale", key="f_v4_kw")
-    
-    # Symmetrical Text Areas
-    prod_description = st.text_area("Product Description", placeholder="General product value prop...", height=80, key="f_v4_desc")
-    intention = st.text_area("Intention (Inter Prompt)", placeholder="e.g. Conversion, Awareness, Upsell", height=80, key="f_v4_int")
-    
-    # Optional Targeting Details
-    with st.expander("📍 Target Details (Optional)", expanded=True):
-        specific_product = st.text_input("Specific Product Name", placeholder="e.g. iPhone 15 Pro", key="f_v4_spec")
-        segment = st.text_input("Segment", placeholder="e.g. Existing Users", key="f_v4_seg")
-        sub_segment = st.text_input("Sub-Segment", placeholder="e.g. High-Spenders", key="f_v4_sub")
-
     st.divider()
     
     # --- PERFORMANCE SCORING SUMMARY ---
@@ -66,9 +67,9 @@ with st.sidebar:
         "2. UI Tabs for Full Ranking vs Top 10.",
         "3. Financials: 1000 Rev/Click | 0.66 Cost/View.",
         "4. Efficiency Logic: Lower volume wins if profits match.",
-        "5. Scale Validation & BVS/ERS scoring.",
-        "6. Final Score visibility per row.",
-        "7. Symmetrical UI: Intention and Product Description boxes equalized."
+        "5. Final Score visibility per row.",
+        "6. Symmetrical UI: Intention and Product Description boxes equalized.",
+        "7. Layout: Unit Economics moved below Message Requirements."
     ]
     for p in history:
         st.markdown(f'<div class="prompt-history">{p}</div>', unsafe_allow_html=True)
@@ -88,6 +89,7 @@ def process_true_performance(df, label):
         df['V_N'] = pd.to_numeric(df[v_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
         df['C_N'] = pd.to_numeric(df[c_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
         
+        # Financial Calcs
         df['CTR%'] = (df['C_N'] / df['V_N'].replace(0, np.nan)) * 100
         df['Total_Cost'] = df['V_N'] * cost_per_view
         df['Net_Profit'] = (df['C_N'] * rev_per_click) - df['Total_Cost']
@@ -142,12 +144,12 @@ def get_ai_prompt(ranked_df, content_col):
 st.title("📊 Strategic Content Dashboard")
 
 # Stream 1
-st.markdown('<div class="stream-header">📂 STREAM 1: Historical Efficiency Analysis</div>', unsafe_allow_html=True)
-s1_files = st.file_uploader("Upload S1 CSVs", type="csv", accept_multiple_files=True, key="s1_final_v4")
+st.markdown('<div class="stream-header">📂 STREAM 1: Performance Analysis</div>', unsafe_allow_html=True)
+s1_files = st.file_uploader("Upload S1 CSVs", type="csv", accept_multiple_files=True, key="s1_flow")
 if s1_files:
     df_s1 = pd.concat([pd.read_csv(f) for f in s1_files], ignore_index=True)
     ranked_s1, c_s1 = process_true_performance(df_s1, "Stream 1")
-    if ranked_s1 is not None and st.button("🚀 Run S1 Strategic Engineering"):
+    if ranked_s1 is not None and st.button("🚀 Run S1 Engineering"):
         genai.configure(api_key=ACTIVE_KEY)
         model = genai.GenerativeModel('gemini-1.5-flash')
         res = model.generate_content(get_ai_prompt(ranked_s1, c_s1))
@@ -156,12 +158,12 @@ if s1_files:
 st.divider()
 
 # Stream 2
-st.markdown('<div class="stream-header">📂 STREAM 2: Format Strategy & Style Replication</div>', unsafe_allow_html=True)
-s2_file = st.file_uploader("Upload S2 Format CSV", type="csv", key="s2_final_v4")
+st.markdown('<div class="stream-header">📂 STREAM 2: Style & Format Replication</div>', unsafe_allow_html=True)
+s2_file = st.file_uploader("Upload S2 Format CSV", type="csv", key="s2_flow")
 if s2_file:
     df_s2 = pd.read_csv(s2_file)
     ranked_s2, c_s2 = process_true_performance(df_s2, "Stream 2")
-    if ranked_s2 is not None and st.button("🚀 Run S2 Style-Replication Engineering"):
+    if ranked_s2 is not None and st.button("🚀 Run S2 Engineering"):
         genai.configure(api_key=ACTIVE_KEY)
         model = genai.GenerativeModel('gemini-1.5-flash')
         res = model.generate_content(get_ai_prompt(ranked_s2, c_s2))
