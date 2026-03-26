@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
-from google import genai
+import google.generativeai as genai
 import numpy as np
 
 # --- 1. CONFIG & UI ---
-# Try to get the key, but don't crash if it's missing
+# Ensure your Streamlit Secret is named GEMINI_API_KEY
 ACTIVE_KEY = st.secrets.get("GEMINI_API_KEY", "")
 pd.set_option('display.max_colwidth', None)
 
@@ -25,30 +25,30 @@ with st.sidebar:
     st.title("🛡️ High-CTR Engineer")
     
     st.header("🎯 Target Parameters")
-    keywords_input = st.text_input("Core Keywords", placeholder="e.g. Refill, Insulin, Safety", key="kw_input")
-    prod_description = st.text_area("Product Details", height=150, key="prod_desc")
-    intention = st.text_area("Primary Goal", height=150, key="goal_input")
+    keywords_input = st.text_input("Core Keywords", placeholder="e.g. Refill, Insulin, Safety", key="kw_sidebar")
+    prod_description = st.text_area("Product Details", height=150, key="prod_sidebar")
+    intention = st.text_area("Primary Goal", height=150, key="goal_sidebar")
 
     st.divider()
     
     st.header("🔍 Advanced Targeting (Optional)")
-    seg_type = st.text_input("1. Segment Type", placeholder="e.g. Lapsed Users", key="s_type")
-    seg_reason = st.text_input("2. Reason for Segment", placeholder="e.g. 30-Day Inactive", key="s_reason")
-    sub_seg = st.text_input("3. Sub Segment", placeholder="e.g. Chronic/Insulin", key="s_sub")
-    spec_prod = st.text_input("4. Specific Product Base", placeholder="e.g. Lantus", key="s_prod")
+    seg_type = st.text_input("1. Segment Type", placeholder="e.g. Lapsed Users", key="type_sidebar")
+    seg_reason = st.text_input("2. Reason for Segment", placeholder="e.g. 30-Day Inactive", key="reason_sidebar")
+    sub_seg = st.text_input("3. Sub Segment", placeholder="e.g. Chronic/Insulin", key="sub_sidebar")
+    spec_prod = st.text_input("4. Specific Product Base", placeholder="e.g. Lantus", key="prod_base_sidebar")
 
     st.divider()
     
     st.header("⚙️ Ranking Logic")
     with st.expander("🔬 CTR Logic", expanded=True):
         st.markdown('<div class="logic-box"><b>Sure-Shot Formula:</b><br><span class="formula">CTR = (Clicks / Viewed) * 100</span><br><br><b>Weighting:</b><br>80% Engagement DNA<br>20% Volume Confidence</div>', unsafe_allow_html=True)
-        st.caption("Prioritizes messages that stop the scroll and convert views to clicks.")
+        st.caption("Focuses on messages that convert visual impressions into clicks.")
 
 # --- 3. MAIN DASHBOARD ---
 st.title("📊 High-Performance Campaign Attribution")
 
-# UNIQUE KEY added to file_uploader to prevent DuplicateElementId error
-uploaded_files = st.file_uploader("Upload Campaign CSVs", type="csv", accept_multiple_files=True, key="main_uploader")
+# UNIQUE KEY to prevent StreamlitDuplicateElementId
+uploaded_files = st.file_uploader("Upload Campaign CSVs", type="csv", accept_multiple_files=True, key="uploader_main")
 
 if uploaded_files:
     try:
@@ -89,17 +89,20 @@ if uploaded_files:
             st.subheader("🏆 Step 2: High-CTR Benchmarks (Ranked by Clicks/Viewed)")
             winners = df.sort_values(by='Attribution_Score', ascending=False).head(10).copy()
             
-            # Clean display formatting
+            # Formatting for display
             winners['Final CTR %'] = winners['CTR_Percentage'].astype(str) + '%'
             
             st.table(winners[[id_col, who_col, msg_col, 'Final CTR %', 'Attribution_Score']])
 
-            if st.button("🚀 Step 3: Engineer Content from High-CTR DNA"):
+            if st.button("🚀 Step 3: Engineer Content from High-CTR DNA", key="engineer_btn"):
                 if not ACTIVE_KEY:
-                    st.error("API Key missing! Please check your Streamlit Secrets (GEMINI_API_KEY).")
+                    st.error("API Key missing! Add GEMINI_API_KEY to your Secrets.")
                 else:
                     try:
-                        client = genai.Client(api_key=ACTIVE_KEY)
+                        # Configure GenAI
+                        genai.configure(api_key=ACTIVE_KEY)
+                        model = genai.GenerativeModel('gemini-1.5-flash')
+                        
                         context_data = ""
                         for _, row in winners.iterrows():
                             context_data += f"Campaign ID: {row[id_col]} | CTR: {row['Final CTR %']} | Segment: {row.get(who_col)} | Message: {row[msg_col]}\n"
@@ -116,7 +119,7 @@ if uploaded_files:
                         """
                         
                         with st.spinner("Analyzing high-performance DNA..."):
-                            response = client.models.generate_content(model="gemini-3-flash", contents=prompt)
+                            response = model.generate_content(prompt)
                             st.success("✅ Engineering Complete")
                             st.markdown(response.text)
                             
