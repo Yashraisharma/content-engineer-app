@@ -150,19 +150,30 @@ if st.button("🚀 MASTER GENERATE: SYNTHESIZE PERFORMANCE & STYLE"):
     else:
         try:
             genai.configure(api_key=ACTIVE_KEY)
-            
             MODEL_NAME = 'gemini-3-flash-preview'
             model = genai.GenerativeModel(MODEL_NAME)
             
-            # Constraint Logic for CIRCLE
-            circle_constraint = ""
+            # --- CIRCLE & DELIVERY LOGIC ---
             if not circle_subscriber:
-                circle_constraint = "STRICT NEGATIVE CONSTRAINT: Do not use the word 'CIRCLE' or any references to the CIRCLE subscription/loyalty program. Focus only on general value propositions."
+                circle_constraint = """
+                STRICT NEGATIVE CONSTRAINTS:
+                - DO NOT mention 'CIRCLE' or 'Free Delivery'.
+                - DO NOT mention 'Unlimited Delivery' or 'Subscription Perks'.
+                - Free delivery is a CIRCLE-only benefit; omit it entirely.
+                """
             else:
-                circle_constraint = "CONTEXT: The target is a CIRCLE subscriber. Leverage CIRCLE-specific perks and terminology where relevant."
+                circle_constraint = "CONTEXT: Target is a CIRCLE subscriber. Highlight 'Unlimited Free Delivery' and CIRCLE branding."
+
+            # --- DISCOUNT & CONTENT LOGIC ---
+            dna_constraint = f"""
+            DATA INTEGRITY RULES:
+            - DO NOT use discounts (e.g., 15%, EXTRA5) from the DNA samples if they are not in the current Description: '{prod_description}'.
+            - ONLY use pricing/offers explicitly stated in the current 'Product Description'.
+            - STYLE REPLICATION: Replicate the emoji density and line-segmentation from Stream 2 for ALL 10 variations.
+            """
 
             s1_ctx = ranked_s1.head(10)[[c_s1, 'CTR_Disp']].to_string(index=False) if ranked_s1 is not None else "N/A"
-            s2_ctx = ranked_s2.head(5)[[c_s2]].to_string(index=False) if ranked_s2 is not None else "N/A"
+            s2_ctx = ranked_s2.head(10)[[c_s2]].to_string(index=False) if ranked_s2 is not None else "N/A"
             
             master_prompt = f"""
             PRODUCT: {specific_product if specific_product else 'Main Line'}
@@ -172,21 +183,22 @@ if st.button("🚀 MASTER GENERATE: SYNTHESIZE PERFORMANCE & STYLE"):
             KEYWORDS: {keywords_input}
             
             {circle_constraint}
+            {dna_constraint}
 
             PERFORMANCE DNA (Stream 1): {s1_ctx}
             STYLE DNA (Stream 2): {s2_ctx}
 
             TASK: Generate 10 Variations in a Markdown Table with 5 columns:
-            1. New Message: The engineered copy.
-            2. Reference: The row from Stream 1 that inspired this.
-            3. Selection Logic: Why this hook matches the {intention}.
-            4. Strategic Lift: How text/emojis/CTA drive more action.
+            1. New Message: The engineered copy (Match Stream 2 formatting/emojis).
+            2. Reference: The row from Stream 1 used for the angle.
+            3. Selection Logic: Why this angle matches the {intention}.
+            4. Strategic Lift: Breakdown of how text/emojis improve the reference.
             5. Expected CTR: Realistic projection based on Stream 1.
 
-            CRITICAL: No introductory text. Output the table immediately.
+            CRITICAL: No introductory text. No hallucinated discounts. No CIRCLE mentions unless toggled.
             """
             
-            with st.spinner("Engineering Subscription-Aware Content..."):
+            with st.spinner("Engineering High-Precision Content..."):
                 res = model.generate_content(master_prompt)
                 st.markdown("### 🏆 Master Engineered Content Strategy")
                 st.markdown(highlight_keywords(res.text, keywords_input), unsafe_allow_html=True)
