@@ -32,10 +32,16 @@ with st.sidebar:
     prod_description = st.text_area("Product Description", placeholder="General value prop...", height=80, key="g3_desc")
     intention = st.text_area("Intention (Inter Prompt)", placeholder="e.g. Conversion, Awareness", height=80, key="g3_int")
 
-    with st.expander("📍 Target Details (Optional)", expanded=True):
-        specific_product = st.text_input("Specific Product Name", key="g3_spec")
-        segment = st.text_input("Segment", key="g3_seg")
-        sub_segment = st.text_input("Sub-Segment", key="g3_sub")
+   with st.expander("📍 Target Details (Optional)", expanded=True):
+    col_seg, col_sub = st.columns(2)
+    with col_seg:
+        segment = st.text_input("Segment Name", key="ms_seg_v2")
+        seg_desc = st.text_area("Segment Description", placeholder="e.g. High-value chronic patients", height=70)
+    with col_sub:
+        sub_segment = st.text_input("Sub-Segment Name", key="ms_sub_v2")
+        sub_desc = st.text_area("Sub-Segment Description", placeholder="e.g. Price-sensitive insulin users", height=70)
+    
+    circle_subscriber = st.checkbox("CIRCLE Subscriber (Tick if yes)", value=False, key="ms_circle_v2")
 
     st.divider()
     
