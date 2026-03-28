@@ -138,9 +138,7 @@ except Exception as e:
     ranked_s2, c_s2 = None, None
 
 st.divider()
-
-# --- UPDATE: THE RESULT ENGINE (Inside the Master Generate Block) ---
-
+# master generate
 if st.button("🚀 MASTER GENERATE: SYNTHESIZE PERFORMANCE & STYLE"):
     if not (ranked_s1 is not None or ranked_s2 is not None):
         st.error("Please upload data for at least one stream to generate content.")
@@ -148,14 +146,15 @@ if st.button("🚀 MASTER GENERATE: SYNTHESIZE PERFORMANCE & STYLE"):
         try:
             genai.configure(api_key=ACTIVE_KEY)
             
-            # Using the v1beta compatible model string
-            model = genai.GenerativeModel('gemini-3-flash-preview')
+            # CRITICAL FIX: Define MODEL_NAME before using it
+            MODEL_NAME = 'gemini-3-flash-preview' 
             model = genai.GenerativeModel(MODEL_NAME)
             
+            # Prepare DNA Context
             s1_ctx = ranked_s1.head(10)[[c_s1, 'CTR_Disp']].to_string(index=False) if ranked_s1 is not None else "N/A"
             s2_ctx = ranked_s2.head(5)[[c_s2]].to_string(index=False) if ranked_s2 is not None else "N/A"
             
-            # THE REFINED STRUCTURED PROMPT
+            # REFINED 5-COLUMN PROMPT
             master_prompt = f"""
             ROLE: Senior Growth Content Engineer.
             PRODUCT: {specific_product if specific_product else 'Main Line'}
@@ -165,26 +164,21 @@ if st.button("🚀 MASTER GENERATE: SYNTHESIZE PERFORMANCE & STYLE"):
             KEYWORDS: {keywords_input}
 
             PERFORMANCE DNA (Stream 1): {s1_ctx}
-            STYLE DNA (Stream 2): {s2_context if 's2_context' in locals() else 'N/A'}
+            STYLE DNA (Stream 2): {s2_ctx}
 
-            TASK: Generate 10 Variations in a DATA TABLE format with these 5 columns:
+            TASK: Generate 10 Variations in a Markdown Table with these 5 columns:
             1. New Message: The engineered copy.
             2. Reference: Which DNA row from Stream 1 inspired this.
-            3. Selection Logic: Why this specific hook/angle was chosen.
-            4. Strategic Lift: How this improves upon the reference and what the specific text elements (emojis, CTAs) do to drive action.
-            5. Expected CTR: A realistic projection based on the DNA provided. 
-               - Evolutionary: Ref 1.05x - 1.15x current.
-               - Revolutionary: High variance projection based on goal.
-
-            OUTPUT FORMAT: Return as a Markdown Table.
+            3. Selection Logic: Why this hook/angle was chosen.
+            4. Strategic Lift: How text/emojis/CTA drive more action than original.
+            5. Expected CTR: Realistic projection based on Stream 1.
             """
             
-            with st.spinner("Synthesizing Strategy & Calculating Projections..."):
+            with st.spinner("Synthesizing Strategy with Gemini 3 Flash..."):
                 res = model.generate_content(master_prompt)
-                
                 st.markdown("### 🏆 Master Engineered Content Strategy")
-                # Highlight keywords within the table output
                 st.markdown(highlight_keywords(res.text, keywords_input), unsafe_allow_html=True)
                 
         except Exception as e:
-            st.error(f"Model Error: {e}")
+            # This will catch if MODEL_NAME is still missing or if the API fails
+            st.error(f"Execution Error: {e}")
