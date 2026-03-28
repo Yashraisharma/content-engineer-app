@@ -8,7 +8,7 @@ import re
 ACTIVE_KEY = st.secrets.get("GEMINI_API_KEY", "")
 pd.set_option('display.max_colwidth', None)
 
-st.set_page_config(page_title="Content Engineer Pro | Gemini 3 Flash", layout="wide")
+st.set_page_config(page_title="Content Engineer Pro | G3 Flash Edition", layout="wide")
 
 st.markdown("""
     <style>
@@ -22,50 +22,47 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. SIDEBAR ---
+# --- 2. SIDEBAR: STRATEGIC INPUTS ---
 with st.sidebar:
     st.title("🛡️ Content Engineer Pro")
     
     # Pillar 1: Message Requirements
     st.header("🎯 Message Requirements")
-    keywords_input = st.text_input("Keywords", placeholder="e.g. BOGO, Sale", key="g3_kw")
-    prod_description = st.text_area("Product Description", placeholder="General value prop...", height=80, key="g3_desc")
-    intention = st.text_area("Intention (Inter Prompt)", placeholder="e.g. Conversion, Awareness", height=80, key="g3_int")
-
-   with st.expander("📍 Target Details (Optional)", expanded=True):
-    col_seg, col_sub = st.columns(2)
-    with col_seg:
-        segment = st.text_input("Segment Name", key="ms_seg_v2")
-        seg_desc = st.text_area("Segment Description", placeholder="e.g. High-value chronic patients", height=70)
-    with col_sub:
-        sub_segment = st.text_input("Sub-Segment Name", key="ms_sub_v2")
-        sub_desc = st.text_area("Sub-Segment Description", placeholder="e.g. Price-sensitive insulin users", height=70)
+    keywords_input = st.text_input("Keywords", placeholder="e.g. BOGO, Sale", key="f_kw")
+    prod_description = st.text_area("Product Description", placeholder="Copy-paste the specific offer/product details here...", height=100, key="f_desc")
+    intention = st.text_area("Intention (Inter Prompt)", placeholder="e.g. Conversion, Reactivation", height=80, key="f_int")
     
-    circle_subscriber = st.checkbox("CIRCLE Subscriber (Tick if yes)", value=False, key="ms_circle_v2")
-
-    st.divider()
-    
-    # NEW: CIRCLE Subscription Filter
-    circle_subscriber = st.checkbox("CIRCLE Subscriber (Tick if yes)", value=False, key="ms_circle")
+    # Pillar 2: Target Details (Segment Intelligence)
+    with st.expander("📍 Target Details (Segment Intelligence)", expanded=True):
+        specific_product = st.text_input("Specific Product Name")
+        st.divider()
+        segment = st.text_input("Segment Name")
+        seg_desc = st.text_area("Segment Description", placeholder="e.g. Chronic patients, high-value...", height=70)
+        st.divider()
+        sub_segment = st.text_input("Sub-Segment Name")
+        sub_desc = st.text_area("Sub-Segment Description", placeholder="e.g. Price sensitive, forgetful...", height=70)
+        
+        circle_subscriber = st.checkbox("CIRCLE Subscriber (Tick if yes)", value=False)
 
     st.divider()
 
-    # Pillar 2: Unit Economics
+    # Pillar 3: Unit Economics
     st.header("💰 Unit Economics")
     cost_per_view = st.number_input("Cost per Viewed (Rs)", value=0.66, format="%.2f")
     rev_per_click = st.number_input("Revenue per Click (Rs)", value=1000.0)
 
     st.divider()
 
-    # Pillar 3: System Overview
+    # Pillar 4: System Overview (Bottom)
     st.header("🌐 System Overview")
     st.markdown("""
     <div class="summary-box">
-    <b>Powered by Gemini 3 Flash:</b> This platform transforms raw campaign data into high-ROI copy by bridging Financial Economics and Generative AI.
+    <b>What this tool does:</b><br>
+    Synthesizes Historical ROI (Stream 1) and Visual Formats (Stream 2) into 10 engineered variations using <b>Gemini 3 Flash</b>.
     </div>
     """, unsafe_allow_html=True)
 
-    # Pillar 4: Scoring Logic
+    # Pillar 5: Scoring Logic (Bottom)
     st.header("⚙️ Scoring & Ranking Logic")
     st.markdown(f"""
     <div class="logic-summary">
@@ -74,7 +71,7 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-# --- 3. PROCESSING ENGINE ---
+# --- 3. CORE PROCESSING ENGINE ---
 def process_data(df, label):
     df.columns = df.columns.str.strip()
     cols_low = [c.lower() for c in df.columns]
@@ -119,65 +116,47 @@ st.title("📊 Strategic Content Dashboard")
 
 # Stream 1
 st.markdown('<div class="stream-header">📂 STREAM 1: Performance ROI DNA</div>', unsafe_allow_html=True)
-s1_files = st.file_uploader("Upload S1 Performance CSVs", type="csv", accept_multiple_files=True, key="g3_s1")
-
-# Use try-except to handle data loading gracefully
-try:
-    if s1_files:
-        df_s1 = pd.concat([pd.read_csv(f) for f in s1_files], ignore_index=True)
-        ranked_s1, c_s1 = process_data(df_s1, "Stream 1")
-    else:
-        ranked_s1, c_s1 = None, None
-except Exception as e:
-    st.error(f"Error loading Stream 1: {e}")
-    ranked_s1, c_s1 = None, None
+s1_files = st.file_uploader("Upload Performance CSVs", type="csv", accept_multiple_files=True, key="main_s1")
+ranked_s1, c_s1 = None, None
+if s1_files:
+    df_s1 = pd.concat([pd.read_csv(f) for f in s1_files], ignore_index=True)
+    ranked_s1, c_s1 = process_data(df_s1, "Stream 1")
 
 st.divider()
 
 # Stream 2
 st.markdown('<div class="stream-header">📂 STREAM 2: Structural Style DNA</div>', unsafe_allow_html=True)
-s2_file = st.file_uploader("Upload S2 Style CSV", type="csv", key="g3_s2")
-
-try:
-    if s2_file:
-        df_s2 = pd.read_csv(s2_file)
-        ranked_s2, c_s2 = process_data(df_s2, "Stream 2")
-    else:
-        ranked_s2, c_s2 = None, None
-except Exception as e:
-    st.error(f"Error loading Stream 2: {e}")
-    ranked_s2, c_s2 = None, None
+s2_file = st.file_uploader("Upload Style CSV", type="csv", key="main_s2")
+ranked_s2, c_s2 = None, None
+if s2_file:
+    df_s2 = pd.read_csv(s2_file)
+    ranked_s2, c_s2 = process_data(df_s2, "Stream 2")
 
 st.divider()
-# master generate
+
+# --- THE MASTER GENERATE ENGINE ---
 if st.button("🚀 MASTER GENERATE: SYNTHESIZE PERFORMANCE & STYLE"):
     if not (ranked_s1 is not None or ranked_s2 is not None):
-        st.error("Please upload data for at least one stream to generate content.")
+        st.error("Please upload data files before generating.")
     else:
         try:
+            # Setup Model
             genai.configure(api_key=ACTIVE_KEY)
-            MODEL_NAME = 'gemini-3-flash-preview'
+            MODEL_NAME = 'gemini-3-flash-preview' # Targeting Gemini 3 Flash
             model = genai.GenerativeModel(MODEL_NAME)
             
-            # --- CIRCLE & DELIVERY LOGIC ---
-            if not circle_subscriber:
-                circle_constraint = """
-                STRICT NEGATIVE CONSTRAINTS:
-                - DO NOT mention 'CIRCLE' or 'Free Delivery'.
-                - DO NOT mention 'Unlimited Delivery' or 'Subscription Perks'.
-                - Free delivery is a CIRCLE-only benefit; omit it entirely.
-                """
-            else:
-                circle_constraint = "CONTEXT: Target is a CIRCLE subscriber. Highlight 'Unlimited Free Delivery' and CIRCLE branding."
-
-            # --- DISCOUNT & CONTENT LOGIC ---
-            dna_constraint = f"""
+            # Constraints: CIRCLE & Data Integrity
+            circle_logic = "STRICT: Do NOT mention 'CIRCLE' or 'Free Delivery' (Circle-only benefit)." if not circle_subscriber else "Target is a CIRCLE user. Highlight 'Unlimited Free Delivery'."
+            
+            integrity_logic = f"""
             DATA INTEGRITY RULES:
-            - DO NOT use discounts (e.g., 15%, EXTRA5) from the DNA samples if they are not in the current Description: '{prod_description}'.
-            - ONLY use pricing/offers explicitly stated in the current 'Product Description'.
-            - STYLE REPLICATION: Replicate the emoji density and line-segmentation from Stream 2 for ALL 10 variations.
+            - SOURCE OF TRUTH: Use ONLY the offers/discounts in the Description: '{prod_description}'.
+            - DO NOT hallucinate discounts (e.g., 15% off) from the DNA samples if they aren't in the Description.
+            - DO NOT name the segment '{segment}' or sub-segment '{sub_segment}' in the text.
+            - AUDIENCE TRAITS: Address {seg_desc} and {sub_desc} implicitly.
             """
 
+            # Gather DNA
             s1_ctx = ranked_s1.head(10)[[c_s1, 'CTR_Disp']].to_string(index=False) if ranked_s1 is not None else "N/A"
             s2_ctx = ranked_s2.head(10)[[c_s2]].to_string(index=False) if ranked_s2 is not None else "N/A"
             
@@ -185,26 +164,26 @@ if st.button("🚀 MASTER GENERATE: SYNTHESIZE PERFORMANCE & STYLE"):
             PRODUCT: {specific_product if specific_product else 'Main Line'}
             DESCRIPTION: {prod_description}
             GOAL: {intention}
-            TARGET: {segment} | {sub_segment}
             KEYWORDS: {keywords_input}
             
-            {circle_constraint}
-            {dna_constraint}
+            {circle_logic}
+            {integrity_logic}
 
             PERFORMANCE DNA (Stream 1): {s1_ctx}
             STYLE DNA (Stream 2): {s2_ctx}
 
-            TASK: Generate 10 Variations in a Markdown Table with 5 columns:
-            1. New Message: The engineered copy (Match Stream 2 formatting/emojis).
-            2. Reference: The row from Stream 1 used for the angle.
-            3. Selection Logic: Why this angle matches the {intention}.
-            4. Strategic Lift: Breakdown of how text/emojis improve the reference.
-            5. Expected CTR: Realistic projection based on Stream 1.
+            TASK: Generate 10 Variations in a Markdown Table with 6 columns:
+            1. New Message: The engineered copy (Replicate Stream 2 emoji/line-break style).
+            2. Reference: The DNA row from Stream 1 used for the angle.
+            3. Selection Logic: Why this matches the {intention}.
+            4. Strategic Lift: How text/emojis improve on the reference.
+            5. Segmentation Alignment: How {segment}/{sub_segment} traits were woven in.
+            6. Expected CTR: Realistic projection based on Stream 1.
 
-            CRITICAL: No introductory text. No hallucinated discounts. No CIRCLE mentions unless toggled.
+            CRITICAL: No introductory text. No hallucinated offers. Immediate table output.
             """
             
-            with st.spinner("Engineering High-Precision Content..."):
+            with st.spinner("Synthesizing Strategy with Gemini 3 Flash..."):
                 res = model.generate_content(master_prompt)
                 st.markdown("### 🏆 Master Engineered Content Strategy")
                 st.markdown(highlight_keywords(res.text, keywords_input), unsafe_allow_html=True)
