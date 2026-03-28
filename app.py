@@ -149,7 +149,7 @@ if st.button("🚀 MASTER GENERATE: SYNTHESIZE PERFORMANCE & STYLE"):
             genai.configure(api_key=ACTIVE_KEY)
             
             # Using the v1beta compatible model string
-            MODEL_NAME = 'models/gemini-1.5-flash'
+            model = genai.GenerativeModel('gemini-3-flash-preview')
             model = genai.GenerativeModel(MODEL_NAME)
             
             s1_ctx = ranked_s1.head(10)[[c_s1, 'CTR_Disp']].to_string(index=False) if ranked_s1 is not None else "N/A"
