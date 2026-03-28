@@ -31,7 +31,7 @@ with st.sidebar:
     keywords_input = st.text_input("Keywords", placeholder="e.g. BOGO, Sale", key="g3_kw")
     prod_description = st.text_area("Product Description", placeholder="General value prop...", height=80, key="g3_desc")
     intention = st.text_area("Intention (Inter Prompt)", placeholder="e.g. Conversion, Awareness", height=80, key="g3_int")
-        st.divider()
+
     with st.expander("📍 Target Details (Optional)", expanded=True):
         specific_product = st.text_input("Specific Product Name", key="g3_spec")
         segment = st.text_input("Segment", key="g3_seg")
