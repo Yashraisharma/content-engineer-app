@@ -38,6 +38,9 @@ with st.sidebar:
         sub_segment = st.text_input("Sub-Segment", key="g3_sub")
 
     st.divider()
+    
+    # NEW: CIRCLE Subscription Filter
+    circle_subscriber = st.checkbox("CIRCLE Subscriber (Tick if yes)", value=False, key="ms_circle")
 
     # Pillar 2: Unit Economics
     st.header("💰 Unit Economics")
@@ -146,39 +149,45 @@ if st.button("🚀 MASTER GENERATE: SYNTHESIZE PERFORMANCE & STYLE"):
         try:
             genai.configure(api_key=ACTIVE_KEY)
             
-            # CRITICAL FIX: Define MODEL_NAME before using it
-            MODEL_NAME = 'gemini-3-flash-preview' 
+            MODEL_NAME = 'gemini-3-flash-preview'
             model = genai.GenerativeModel(MODEL_NAME)
             
-            # Prepare DNA Context
+            # Constraint Logic for CIRCLE
+            circle_constraint = ""
+            if not circle_subscriber:
+                circle_constraint = "STRICT NEGATIVE CONSTRAINT: Do not use the word 'CIRCLE' or any references to the CIRCLE subscription/loyalty program. Focus only on general value propositions."
+            else:
+                circle_constraint = "CONTEXT: The target is a CIRCLE subscriber. Leverage CIRCLE-specific perks and terminology where relevant."
+
             s1_ctx = ranked_s1.head(10)[[c_s1, 'CTR_Disp']].to_string(index=False) if ranked_s1 is not None else "N/A"
             s2_ctx = ranked_s2.head(5)[[c_s2]].to_string(index=False) if ranked_s2 is not None else "N/A"
             
-            # REFINED 5-COLUMN PROMPT
             master_prompt = f"""
-            ROLE: Senior Growth Content Engineer.
             PRODUCT: {specific_product if specific_product else 'Main Line'}
             DESCRIPTION: {prod_description}
             GOAL: {intention}
             TARGET: {segment} | {sub_segment}
             KEYWORDS: {keywords_input}
+            
+            {circle_constraint}
 
             PERFORMANCE DNA (Stream 1): {s1_ctx}
             STYLE DNA (Stream 2): {s2_ctx}
 
-            TASK: Generate 10 Variations in a Markdown Table with these 5 columns:
+            TASK: Generate 10 Variations in a Markdown Table with 5 columns:
             1. New Message: The engineered copy.
-            2. Reference: Which DNA row from Stream 1 inspired this.
-            3. Selection Logic: Why this hook/angle was chosen.
-            4. Strategic Lift: How text/emojis/CTA drive more action than original.
+            2. Reference: The row from Stream 1 that inspired this.
+            3. Selection Logic: Why this hook matches the {intention}.
+            4. Strategic Lift: How text/emojis/CTA drive more action.
             5. Expected CTR: Realistic projection based on Stream 1.
+
+            CRITICAL: No introductory text. Output the table immediately.
             """
             
-            with st.spinner("Synthesizing Strategy with Gemini 3 Flash..."):
+            with st.spinner("Engineering Subscription-Aware Content..."):
                 res = model.generate_content(master_prompt)
                 st.markdown("### 🏆 Master Engineered Content Strategy")
                 st.markdown(highlight_keywords(res.text, keywords_input), unsafe_allow_html=True)
                 
         except Exception as e:
-            # This will catch if MODEL_NAME is still missing or if the API fails
             st.error(f"Execution Error: {e}")
