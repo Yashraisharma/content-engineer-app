@@ -139,37 +139,52 @@ except Exception as e:
 
 st.divider()
 
-# --- THE MASTER GENERATE BUTTON ---
+# --- UPDATE: THE RESULT ENGINE (Inside the Master Generate Block) ---
+
 if st.button("🚀 MASTER GENERATE: SYNTHESIZE PERFORMANCE & STYLE"):
     if not (ranked_s1 is not None or ranked_s2 is not None):
-        st.error("Please upload valid data to generate content.")
+        st.error("Please upload data for at least one stream to generate content.")
     else:
         try:
             genai.configure(api_key=ACTIVE_KEY)
-            # UPDATED FOR GEMINI 3 FLASH
-            model = genai.GenerativeModel('gemini-3-flash-preview')
+            
+            # Using the v1beta compatible model string
+            MODEL_NAME = 'models/gemini-1.5-flash'
+            model = genai.GenerativeModel(MODEL_NAME)
             
             s1_ctx = ranked_s1.head(10)[[c_s1, 'CTR_Disp']].to_string(index=False) if ranked_s1 is not None else "N/A"
             s2_ctx = ranked_s2.head(5)[[c_s2]].to_string(index=False) if ranked_s2 is not None else "N/A"
             
+            # THE REFINED STRUCTURED PROMPT
             master_prompt = f"""
             ROLE: Senior Growth Content Engineer.
-            SPECIFIC PRODUCT: {specific_product if specific_product else 'Main Line'}
+            PRODUCT: {specific_product if specific_product else 'Main Line'}
             DESCRIPTION: {prod_description}
             GOAL: {intention}
-            TARGETING: {segment} | {sub_segment}
+            TARGET: {segment} | {sub_segment}
             KEYWORDS: {keywords_input}
 
-            DNA S1 (ROI Performance): {s1_ctx}
-            DNA S2 (Style/Format): {s2_ctx}
+            PERFORMANCE DNA (Stream 1): {s1_ctx}
+            STYLE DNA (Stream 2): {s2_context if 's2_context' in locals() else 'N/A'}
 
-            TASK: Generate 10 variations (7 Evolutionary, 3 Revolutionary). 
-            Merge S1 high-ROI angles with S2 structure and emoji style.
+            TASK: Generate 10 Variations in a DATA TABLE format with these 5 columns:
+            1. New Message: The engineered copy.
+            2. Reference: Which DNA row from Stream 1 inspired this.
+            3. Selection Logic: Why this specific hook/angle was chosen.
+            4. Strategic Lift: How this improves upon the reference and what the specific text elements (emojis, CTAs) do to drive action.
+            5. Expected CTR: A realistic projection based on the DNA provided. 
+               - Evolutionary: Ref 1.05x - 1.15x current.
+               - Revolutionary: High variance projection based on goal.
+
+            OUTPUT FORMAT: Return as a Markdown Table.
             """
             
-            with st.spinner("Synthesizing Strategy with Gemini 3 Flash..."):
+            with st.spinner("Synthesizing Strategy & Calculating Projections..."):
                 res = model.generate_content(master_prompt)
-                st.markdown("### 🏆 Master Engineered Content")
+                
+                st.markdown("### 🏆 Master Engineered Content Strategy")
+                # Highlight keywords within the table output
                 st.markdown(highlight_keywords(res.text, keywords_input), unsafe_allow_html=True)
+                
         except Exception as e:
-            st.error(f"Gemini API Error: {str(e)}")
+            st.error(f"Model Error: {e}")
