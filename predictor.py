@@ -21,7 +21,7 @@ def fetch_news(query, count=1):
 
 @st.cache_data(ttl=60)
 def fetch_live_weather(city_key, fallback_string):
-    """Fetches real-time weather using Open-Meteo API."""
+    """Fetches real-time weather using Open-Meteo (Safe from AccuWeather Bot-Blocks)."""
     coords = {
         "mumbai": (19.0760, 72.8777), "delhi": (28.6139, 77.2090),
         "bangalore": (12.9716, 77.5946), "hyderabad": (17.3850, 78.4867),
@@ -158,18 +158,26 @@ def run_page():
 
     all_rows = get_data()
 
-    # BUCKET THE DATA INTO THE 5 EXPLICIT GROUPS
+    # --- BUCKET THE DATA INTO THE 5 EXPLICIT GROUPS ---
     city_rows, focus_rows, daily_rows, circle_rows, sku_rows = [], [], [], [], []
+    
+    # Standard internal abbreviations
+    city_abbrevs = {'hyd', 'blr', 'del', 'mum', 'chn', 'kol', 'ncr', 'bengaluru'}
     
     for r in all_rows:
         name_lower = r['UI_Name'].lower()
         sheet_lower = r['Sheet'].lower()
         
+        # Smart checks for cities
+        name_words = name_lower.replace('-', ' ').replace('_', ' ').split()
+        has_abbrev = any(abbrev in name_words for abbrev in city_abbrevs)
+        has_full_city = any(c in name_lower for c in DEMOGRAPHICS.keys())
+        
         if 'circle' in name_lower or 'circle' in sheet_lower:
             circle_rows.append(r)
         elif 'sku' in sheet_lower or 'sku' in name_lower:
             sku_rows.append(r)
-        elif 'city' in sheet_lower or any(c in name_lower for c in DEMOGRAPHICS.keys()):
+        elif 'city' in sheet_lower or has_full_city or has_abbrev:
             city_rows.append(r)
         elif 'daily' in sheet_lower or 'portfolio' in sheet_lower:
             daily_rows.append(r)
