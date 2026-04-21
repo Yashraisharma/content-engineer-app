@@ -8,7 +8,7 @@ import google.generativeai as genai
 import re
 from io import BytesIO
 
-# --- 1. CORE UTILITIES ---
+# --- 1. CORE UTILITIES: NEWS, WEATHER, AI ---
 
 @st.cache_data(ttl=300)
 def fetch_news(query):
@@ -43,38 +43,26 @@ def fetch_live_weather(city_key, fallback):
     return fallback
 
 def generate_live_ai_xsell(sheet, name, segment, weather, city, api_key):
-    """
-    Advanced Strategy Engine: Synthesizes Pharma Context with High-Margin FMCG/Wellness.
-    """
     try:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-3-flash')
         prompt = f"""
-        Role: Senior Growth Marketing Strategist for Apollo Pharmacy India.
-        Target Input: {name} (Category: {sheet})
-        Segment Context: {segment}
-        Live Environment: {city}, {weather}
-
-        STRATEGIC DIRECTIVE (BASED ON SYSTEM ANALYSIS):
-        1. DRIVE HIGH-MARGIN BASKETS: Prioritize Baby Care (Diapers/Nutrition), Pharma Health Devices (BP/Steamers), Skin Care (Lotions/Barrier repair), and Clinical Nutrition.
-        2. COMPLEMENTARY HYGIENE: If the anchor is an Antifungal/Med, cross-sell Hygiene, Moisture Management (Anti-fungal socks/towels), and Microbiome repair.
-        3. AVOID RX-ONLY REDUNDANCY: Do not suggest other hardcore medicines unless they are secondary supportive care (e.g., a probiotic with an antibiotic).
-        4. VALUE DRIVERS: Focus on things the user actually needs alongside their meds but hasn't bought yet.
-
-        Output Format: Strict JSON array of arrays: [["Anchor", "Cross-Sell", "Business Logic"]]
-        Suggest exactly 5 pairs.
+        Role: Senior Growth Strategist for Apollo Pharmacy India.
+        Context: City: {city} | Weather: {weather} | Source: {sheet} | Product: {name} | Segment: {segment}.
+        
+        STRICT CROSS-SELL DIRECTIVE:
+        1. NO Rx/Hardcore medicines.
+        2. PRIORITIZE: Hygiene, Skin Barrier Repair, Moisture Management (Anti-fungal towels/socks), Baby Care (Diapers/Wipes), Health Devices (BP/Steamers), and Clinical Nutrition.
+        3. Aim for high-margin FMCG/Wellness drivers.
+        
+        Output: JSON array of arrays ONLY: [["Anchor", "Cross-Sell", "Business Logic"]]
         """
         response = model.generate_content(prompt)
-        # Robust JSON cleaning
-        raw_text = response.text
-        match = re.search(r'\[\s*\[.*\]\s*\]', raw_text, re.DOTALL)
-        if match:
-            return json.loads(match.group())
-        return [["Analysis Pending", "No Items Found", "AI response format was invalid. Please refresh."]]
-    except Exception as e:
-        return [["Connection Error", "Retry Needed", f"API Error: {str(e)}"]]
+        match = re.search(r'\[\s*\[.*\]\s*\]', response.text, re.DOTALL)
+        return json.loads(match.group()) if match else None
+    except: return None
 
-# --- 2. CONFIG & THEME ---
+# --- 2. CONFIGURATION & THEMES ---
 
 DEMOGRAPHICS = {
     "mumbai": {"seniors": "14.8%", "females": "46.1%", "moms": "12.4%", "tech": "92%", "fallback": "31°C | Mist"},
@@ -85,56 +73,44 @@ DEMOGRAPHICS = {
     "kolkata": {"seniors": "16.1%", "females": "47.5%", "moms": "11.2%", "tech": "86%", "fallback": "30°C | Mist"}
 }
 
-SEGMENT_DEFS = {
-    "ntu": "Non-Transacting Users (0 transactions in 60 days)",
-    "churn": "Inactive users at risk of leaving",
-    "winback": "Lapsed users being targeted for return",
-    "active": "Standard active users (1-3 transactions)",
-    "power": "Loyal users (4+ transactions)",
-    "enhancement": "Premium high-volume users"
-}
-
 def apply_theme(mode):
-    if mode == "Dark Mode":
-        bg, text, card, border, link = "#0f172a", "#f8fafc", "#1e293b", "#334155", "#60a5fa"
-        news_bg = "#1e293b"
+    if mode == "Midnight (Dark)":
+        bg, text, card, link = "#0f172a", "#f1f5f9", "#1e293b", "#60a5fa"
     else:
-        bg, text, card, border, link = "#ffffff", "#1e293b", "#f8fafc", "#e2e8f0", "#2563eb"
-        news_bg = "#f1f5f9"
-
+        bg, text, card, link = "#ffffff", "#1e293b", "#f8fafc", "#2563eb"
+    
     css = f"""
     <style>
         .stApp {{ background-color: {bg}; }}
         h1, h2, h3, h4, p, span, label, div {{ color: {text} !important; }}
-        [data-testid="stMetricLabel"] {{ color: {text} !important; font-weight: 600 !important; }}
-        [data-testid="stMetricValue"] {{ color: {text} !important; font-weight: 800 !important; }}
-        div[data-testid="stMetric"] {{ background-color: {card}; border: 1px solid {border}; padding: 15px; border-radius: 10px; }}
-        .news-box {{ background-color: {news_bg}; padding: 15px; border-radius: 8px; border-left: 5px solid {link}; margin-bottom: 10px; }}
+        [data-testid="stMetricLabel"] {{ color: {text} !important; font-weight: 600; opacity: 0.9; }}
+        [data-testid="stMetricValue"] {{ color: {text} !important; font-weight: 800; }}
+        div[data-testid="stMetric"] {{ background-color: {card}; border: 1px solid {link}33; padding: 15px; border-radius: 12px; }}
+        .news-box {{ background-color: {card}; border-left: 5px solid {link}; padding: 12px; border-radius: 6px; margin-bottom: 10px; }}
         a {{ color: {link} !important; font-weight: 700; text-decoration: none; }}
-        .roi-panel {{ background-color: {card}; padding: 25px; border-radius: 15px; border: 1px solid {link}; margin-top: 20px; }}
-        .stButton>button {{ background-color: {link}; color: white !important; border-radius: 8px; border: none; }}
+        .roi-panel {{ background-color: {card}; padding: 25px; border-radius: 15px; border: 1px solid {link}; }}
+        table {{ color: {text} !important; background-color: {card}; }}
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
 
-# --- 3. DASHBOARD ENGINE ---
+# --- 3. THE DASHBOARD ENGINE ---
 
 def run_page():
-    st.set_page_config(page_title="Strategic Growth Dashboard", layout="wide")
+    st.set_page_config(page_title="Growth Strategist", layout="wide")
     
     with st.sidebar:
         st.image("https://www.apollopharmacy.in/static/images/logo.svg", width=150)
-        theme = st.radio("UI Theme:", ["Light Mode", "Dark Mode"])
+        theme = st.radio("Theme:", ["Professional (Light)", "Midnight (Dark)"])
         st.divider()
-        st.caption("FMCG • Baby Care • Devices • Nutrition")
+        st.caption("Clinical FMCG & Wellness Synthesis")
 
     apply_theme(theme)
-    
     now = datetime.now()
     st.title("🛡️ Strategic Growth Predictor")
-    st.markdown(f"**Enterprise Sync:** {now.strftime('%A, %d %B | %I:%M %p')}")
+    st.markdown(f"**Enterprise Pulse:** {now.strftime('%A, %d %B | %I:%M %p')}")
 
-    # --- DATA PARSER ---
+    # --- DATA PARSER: ACTUAL SHEET LOGIC ---
     EXCEL_URL = "https://github.com/Yashraisharma/content-engineer-app/raw/main/cohort_sheets.xlsx.xlsx"
     
     @st.cache_data
@@ -164,13 +140,13 @@ def run_page():
             return all_rows
         except: return []
 
-    all_data = get_data()
+    data = get_data()
 
-    # --- BUCKETING (SMART SEGMENTATION) ---
+    # --- BUCKETING: SHEET-DRIVEN & REGEX-CITY ---
     city_rows, focus_rows, daily_rows, circle_rows, sku_rows = [], [], [], [], []
-    city_regex = re.compile(r'\b(hyd|hyderabad|hyderbad|hydewrabad|blr|bangalore|banglore|del|delhi|mum|mumbai|chn|chennai|kol|kolkata|ncr)\b', re.I)
+    city_regex = re.compile(r'\b(hyd|hyderabad|blr|bangalore|banglore|del|delhi|mum|mumbai|chn|chennai|kol|kolkata|ncr)\b', re.I)
 
-    for r in all_data:
+    for r in data:
         n, s = r['UI_Name'].lower(), r['Sheet_Key'].lower()
         if 'circle' in n: circle_rows.append(r)
         elif s == 'top 6 cities' or city_regex.search(n): city_rows.append(r)
@@ -186,21 +162,20 @@ def run_page():
         p1 = st.multiselect("🏙️ Cities", options=[r['UI_Name'] for r in city_rows])
         for x in p1: sel.append(next(r for r in city_rows if r['UI_Name'] == x))
     with c2:
-        p2 = st.multiselect("🎯 Focus Category", options=[r['UI_Name'] for r in focus_rows])
+        p2 = st.multiselect("🎯 Focus", options=[r['UI_Name'] for r in focus_rows])
         for x in p2: sel.append(next(r for r in focus_rows if r['UI_Name'] == x))
     with c3:
-        p3 = st.multiselect("💊 Daily Pharma", options=[r['UI_Name'] for r in daily_rows])
+        p3 = st.multiselect("💊 Portfolio", options=[r['UI_Name'] for r in daily_rows])
         for x in p3: sel.append(next(r for r in daily_rows if r['UI_Name'] == x))
     with c4:
         p4 = st.multiselect("⭐ Circle", options=[r['UI_Name'] for r in circle_rows])
         for x in p4: sel.append(next(r for r in circle_rows if r['UI_Name'] == x))
     with c5:
-        p5 = st.multiselect("📦 SKU Specific", options=[r['UI_Name'] for r in sku_rows])
+        p5 = st.multiselect("📦 SKU", options=[r['UI_Name'] for r in sku_rows])
         for x in p5: sel.append(next(r for r in sku_rows if r['UI_Name'] == x))
 
     if not sel:
-        st.info("👋 Select cohorts above to launch Clinical & FMCG Synthesis.")
-        return
+        st.info("👋 Select cohorts above to launch Growth Analysis."); return
 
     # --- TABS ---
     st.divider()
@@ -208,35 +183,32 @@ def run_page():
 
     for i, cohort in enumerate(sel):
         with tabs[i]:
-            # Detect Context
             city_key = "hyderabad"
             for k in DEMOGRAPHICS.keys():
-                if k[:3] in cohort['UI_Name'].lower() or k in cohort['UI_Name'].lower(): city_key = k
+                if k[:3] in cohort['UI_Name'].lower() or k in cohort['UI_Name'].lower(): city_key = k; break
             
             dna = DEMOGRAPHICS[city_key]
             weather = fetch_live_weather(city_key, dna['fallback'])
-            seg_def = next((v for k,v in SEGMENT_DEFS.items() if k in cohort['UI_Name'].lower()), "Active Patient")
 
-            # News
+            # News & Context
             n1, n2 = st.columns(2)
             n1.markdown(f'<div class="news-box"><b>🌐 Local News:</b> {fetch_news(city_key)["title"]}</div>', unsafe_allow_html=True)
-            n2.markdown(f'<div class="news-box"><b>🏥 Health Pulse:</b> {fetch_news(cohort["AI_Name"])["title"]}</div>', unsafe_allow_html=True)
+            n2.markdown(f'<div class="news-box"><b>🏥 Pulse:</b> {fetch_news(cohort["AI_Name"])["title"]}</div>', unsafe_allow_html=True)
 
             # Metrics
-            st.markdown(f"#### 🧬 {city_key.upper()} Profile | {weather}")
+            st.markdown(f"#### 🧬 {city_key.upper()} Snapshot | {weather}")
             dc1, dc2, dc3, dc4 = st.columns(4)
             dc1.metric("👵 Seniors", dna['seniors'])
             dc2.metric("🍼 Moms", dna['moms'])
             dc3.metric("👩 Female", dna['females'])
             dc4.metric("📱 Tech Savvy", dna['tech'])
 
-            # AI Table
+            # AI Cross-Sell Table
             st.divider()
-            state_key = f"ai_v3_{cohort['UI_Name']}"
-            api_key = st.secrets["GEMINI_API_KEY"]
+            state_key = f"ai_final_{cohort['UI_Name']}"
             if state_key not in st.session_state or st.session_state[state_key] is None:
-                with st.spinner("AI Synthesizing Growth Strategy..."):
-                    st.session_state[state_key] = generate_live_ai_xsell(cohort['Sheet_Key'], cohort['AI_Name'], seg_def, weather, city_key, api_key)
+                with st.spinner("AI Synthesizing FMCG & Wellness Pairs..."):
+                    st.session_state[state_key] = generate_live_ai_xsell(cohort['Sheet_Key'], cohort['AI_Name'], "Active", weather, city_key, st.secrets["GEMINI_API_KEY"])
 
             st.subheader("🛒 Strategic Cross-Sell Synthesis")
             if st.session_state[state_key]:
@@ -246,13 +218,13 @@ def run_page():
                 st.markdown(df_out.to_html(escape=False, index=False), unsafe_allow_html=True)
                 st.button("🔄 Regenerate", key=f"re_{i}")
 
-    # --- ROI SECTION ---
+    # --- ROI PANEL ---
     st.markdown('<div class="roi-panel">', unsafe_allow_html=True)
-    st.subheader("🧬 Campaign Impact Forecast")
+    st.subheader("🧬 Aggregated Campaign Impact")
     t_base, t_wa, t_push, t_sms, t_email = sum(c['Total'] for c in sel), sum(c['WA'] for c in sel), sum(c['Push'] for c in sel), sum(c['SMS'] for c in sel), sum(c['Email'] for c in sel)
     
     m1, m2, m3, m4, m5 = st.columns(5)
-    m1.metric("Total Base", f"{t_base:,}"); m2.metric("WhatsApp", f"{t_wa:,}"); m3.metric("Push", f"{t_push:,}"); m4.metric("SMS", f"{t_sms:,}"); m5.metric("Email", f"{t_email:,}")
+    m1.metric("Base", f"{t_base:,}"); m2.metric("WA", f"{t_wa:,}"); m3.metric("Push", f"{t_push:,}"); m4.metric("SMS", f"{t_sms:,}"); m5.metric("Email", f"{t_email:,}")
 
     cv1, cv2, cv3, cv4, cv5 = st.columns(5)
     wa_r, sms_r, em_r = cv1.number_input("WA ₹", 0.78), cv2.number_input("SMS ₹", 0.13), cv3.number_input("Email ₹", 0.03)
