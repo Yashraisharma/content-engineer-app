@@ -1,232 +1,194 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
-import requests
-import xml.etree.ElementTree as ET
-import json
 import google.generativeai as genai
+import numpy as np
+import re
 
-# --- 1. LIVE UTILITIES (NEWS & ENTERPRISE WEATHER) ---
-@st.cache_data(ttl=300)
-def fetch_news(query, count=1):
-    url = f"https://news.google.com/rss/search?q={query}&hl=en-IN&gl=IN&ceid=IN:en"
-    try:
-        response = requests.get(url, timeout=5)
-        root = ET.fromstring(response.content)
-        items = root.findall('./channel/item')
-        if items:
-            return {"title": items[0].find('title').text.split(' - ')[0], "link": items[0].find('link').text}
-    except: pass
-    return {"title": "News Feed Offline", "link": "#"}
+# --- 1. CONFIG & UI ---
+ACTIVE_KEY = st.secrets.get("GEMINI_API_KEY", "")
+pd.set_option('display.max_colwidth', None)
 
-def fetch_live_weather(city_key, fallback_string):
-    """Fetches highly accurate, real-time weather using Open-Meteo API locked to IST."""
-    coords = {
-        "mumbai": (19.0760, 72.8777), "delhi": (28.6139, 77.2090),
-        "bangalore": (12.9716, 77.5946), "hyderabad": (17.3850, 78.4867),
-        "chennai": (13.0827, 80.2707), "kolkata": (22.5726, 88.3639)
-    }
+st.set_page_config(page_title="Content Engineer Pro | G3 Flash Edition", layout="wide")
+
+st.markdown("""
+    <style>
+    .stButton>button { width: 100%; border-radius: 5px; height: 4em; background-color: #059669; color: white; font-weight: bold; font-size: 1.1em; border: none; margin-top: 20px; }
+    .stButton>button:hover { background-color: #047857; border: none; }
+    .stream-header { background-color: #0f172a; color: white; padding: 12px; border-radius: 5px; margin-top: 20px; font-weight: bold; }
+    .summary-box { font-size: 0.82em; color: #1e293b; line-height: 1.5; background: #ffffff; padding: 15px; border-radius: 10px; border: 1px solid #dee2e6; margin-bottom: 15px; }
+    .logic-summary { font-size: 0.82em; color: #334155; line-height: 1.4; background: #f1f5f9; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 10px; }
+    .formula-box { background-color: #f8fafc; padding: 8px; border-radius: 5px; font-family: monospace; font-size: 0.85em; border-left: 3px solid #3b82f6; margin-top: 5px; }
+    mark { border-radius: 4px; padding: 0 2px; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- 2. SIDEBAR: STRATEGIC INPUTS ---
+with st.sidebar:
+    st.title("🛡️ Content Engineer Pro")
     
-    if city_key not in coords:
-        return fallback_string
-        
-    lat, lon = coords[city_key]
+    # Pillar 1: Message Requirements
+    st.header("🎯 Message Requirements")
+    keywords_input = st.text_input("Keywords", placeholder="e.g. BOGO, Sale", key="f_kw")
+    prod_description = st.text_area("Product Description", placeholder="Copy-paste the specific offer/product details here...", height=100, key="f_desc")
+    intention = st.text_area("Intention (Inter Prompt)", placeholder="e.g. Conversion, Reactivation", height=80, key="f_int")
     
-    try:
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,weather_code&timezone=Asia%2FKolkata"
-        headers = {"User-Agent": "Mozilla/5.0"}
-        res = requests.get(url, headers=headers, timeout=5).json()
+    # Pillar 2: Target Details (Segment Intelligence)
+    with st.expander("📍 Target Details (Segment Intelligence)", expanded=True):
+        specific_product = st.text_input("Specific Product Name")
+        st.divider()
+        segment = st.text_input("Segment Name")
+        seg_desc = st.text_area("Segment Description", placeholder="e.g. Chronic patients, high-value...", height=70)
+        st.divider()
+        sub_segment = st.text_input("Sub-Segment Name")
+        sub_desc = st.text_area("Sub-Segment Description", placeholder="e.g. Price sensitive, forgetful...", height=70)
         
-        if "current" in res:
-            current = res["current"]
-            temp = current.get("temperature_2m", "--")
-            humidity = current.get("relative_humidity_2m", "--")
-            code = current.get("weather_code", 0)
-            
-            if code == 0: condition = "Clear"
-            elif code in [1, 2, 3]: condition = "Partly Cloudy"
-            elif code in [45, 48]: condition = "Haze"
-            elif code in [51, 53, 55, 61, 63, 65, 80, 81, 82]: condition = "Rain"
-            elif code in [95, 96, 99]: condition = "Thunderstorm"
-            else: condition = "Mist"
-            
-            return f"🌡️ {temp}°C | {condition} | Humidity: {humidity}%"
-        else:
-            return fallback_string
-    except Exception:
-        return fallback_string
+        circle_subscriber = st.checkbox("CIRCLE Subscriber (Tick if yes)", value=False)
 
-# --- 2. THE REAL-TIME AI GENERATOR (st.secrets method) ---
-def generate_live_ai_xsell(category, segment_def, weather, city):
-    try:
-        # NATIVE STREAMLIT METHOD: Pulls directly from .streamlit/secrets.toml
-        api_key = st.secrets["GEMINI_API_KEY"]
-        genai.configure(api_key=api_key)
+    st.divider()
+
+    # Pillar 3: Unit Economics
+    st.header("💰 Unit Economics")
+    cost_per_view = st.number_input("Cost per Viewed (Rs)", value=0.66, format="%.2f")
+    rev_per_click = st.number_input("Revenue per Click (Rs)", value=1000.0)
+
+    st.divider()
+
+    # Pillar 4: System Overview (Bottom)
+    st.header("🌐 System Overview")
+    st.markdown("""
+    <div class="summary-box">
+    <b>What this tool does:</b><br>
+    Synthesizes Historical ROI (Stream 1) and Visual Formats (Stream 2) into 10 engineered variations using <b>Gemini Flash</b>.
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Pillar 5: Scoring Logic (Bottom)
+    st.header("⚙️ Scoring & Ranking Logic")
+    st.markdown("""
+    <div class="logic-summary">
+    <b>ROI Factor:</b> Net Profit / Total Cost.<br>
+    <b>Final Score:</b> ROI × [Vol / (Vol + (Avg_Vol × 0.1))]
+    </div>
+    """, unsafe_allow_html=True)
+
+# --- 3. CORE PROCESSING ENGINE ---
+def process_data(df, label):
+    df.columns = df.columns.str.strip()
+    cols_low = [c.lower() for c in df.columns]
+    msg_idx = next((i for i, c in enumerate(cols_low) if any(x in c for x in ['message', 'content', 'text'])), 0)
+    view_idx = next((i for i, c in enumerate(cols_low) if any(x in c for x in ['viewed', 'imp', 'sent', 'vol'])), None)
+    click_idx = next((i for i, c in enumerate(cols_low) if any(x in c for x in ['clicked', 'click', 'ctr_count'])), None)
+    
+    if view_idx is not None and click_idx is not None:
+        content_col, v_col, c_col = df.columns[msg_idx], df.columns[view_idx], df.columns[click_idx]
+        df['V_N'] = pd.to_numeric(df[v_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+        df['C_N'] = pd.to_numeric(df[c_col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
         
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        prompt = f"""
-        You are a clinical retail strategist for Apollo Pharmacy in India.
-        Context: Target City: {city} | Current Weather: {weather} | Category: {category} | Segment: {segment_def}
+        # Financial Calcs
+        df['CTR%'] = (df['C_N'] / df['V_N'].replace(0, np.nan)) * 100
+        df['Total_Cost'] = df['V_N'] * cost_per_view
+        df['Net_Profit'] = (df['C_N'] * rev_per_click) - df['Total_Cost']
+        df['ROI_Factor'] = (df['Net_Profit'] / df['Total_Cost'].replace(0, np.nan))
+        avg_v = df['V_N'].mean()
+        df['Final_Score'] = df['ROI_Factor'] * (df['V_N'] / (df['V_N'] + (avg_v * 0.1)))
         
-        Generate 5 specific, logical cross-sell product pairs available at an Indian pharmacy. 
-        Focus heavily on the weather and the segment definition.
-        Respond ONLY with a valid JSON array of arrays:
-        [["Anchor Product Name", "Logical Cross-Sell Product", "Brief 1-sentence strategic reason"]]
-        """
-        response = model.generate_content(prompt)
-        clean_json = response.text.replace("```json", "").replace("```", "").strip()
-        return json.loads(clean_json)
-    except Exception as e:
-        # This allows Streamlit to show exactly what went wrong if the key is missing
-        st.error(f"AI Connection Error: {e}") 
-        return None
+        ranked = df.sort_values(by='Final_Score', ascending=False)
+        ranked['CTR_Disp'] = ranked['CTR%'].fillna(0).apply(lambda x: f"{x:.2f}%")
+        ranked['Score_Disp'] = ranked['Final_Score'].apply(lambda x: f"{x:.4f}")
+        
+        st.markdown(f"### 📑 {label} Analysis")
+        t1, t2 = st.tabs(["Full Ranking", "Top Efficiency Winners"])
+        with t1: st.dataframe(ranked[[content_col, 'CTR_Disp', v_col, c_col, 'Score_Disp']], use_container_width=True)
+        with t2: st.table(ranked.head(10)[[content_col, 'CTR_Disp', v_col, 'Score_Disp']])
+        return ranked, content_col
+    return None, None
 
-# --- 3. STATIC DEMOGRAPHICS & SEGMENTS ---
-DEMOGRAPHICS = {
-    "mumbai": {"seniors": "14.8%", "females": "46.1%", "moms": "12.4%", "tech": "92%", "fallback": "🌡️ 31°C | Mist | Humidity: 63%"},
-    "delhi": {"seniors": "12.2%", "females": "46.5%", "moms": "13.8%", "tech": "91%", "fallback": "🌡️ 36°C | Heat Alert | Humidity: 21%"},
-    "bangalore": {"seniors": "11.5%", "females": "47.9%", "moms": "12.1%", "tech": "96%", "fallback": "🌡️ 31°C | Clear | Humidity: 36%"},
-    "hyderabad": {"seniors": "10.9%", "females": "48.8%", "moms": "11.9%", "tech": "94%", "fallback": "🌡️ 35°C | Yellow Alert | Humidity: 35%"},
-    "chennai": {"seniors": "15.2%", "females": "49.7%", "moms": "10.5%", "tech": "90%", "fallback": "🌡️ 30°C | Partly Cloudy | Humidity: 79%"},
-    "kolkata": {"seniors": "16.1%", "females": "47.5%", "moms": "11.2%", "tech": "86%", "fallback": "🌡️ 30°C | Mist | Humidity: 84%"}
-}
+def highlight_keywords(text, keywords_str):
+    if not keywords_str: return text
+    kws = [k.strip() for k in re.split(r'[,\s]+', keywords_str) if k.strip()]
+    for kw in kws:
+        pattern = re.compile(re.escape(kw), re.IGNORECASE)
+        text = pattern.sub(f'<mark style="background-color: #FFFF00; color: black; font-weight: bold;">{kw}</mark>', text)
+    return text
 
-SEGMENT_DEFS = {
-    "ntu": "Non-Transacting Users (0 transactions in 60 days)",
-    "churn": "Old users coming every 30 days and transacting",
-    "winback": "Old NTU users coming back",
-    "active": "Users with 1, 2, or 3 transactions only",
-    "power": "Users hitting their 4th transaction",
-    "enhancement": "High-volume users with many transactions"
-}
+# --- 4. MAIN DASHBOARD ---
+st.title("📊 Strategic Content Dashboard")
 
-def run_page():
-    now = datetime.now()
-    st.set_page_config(layout="wide")
-    st.header("🛡️ Strategic Growth Predictor")
-    st.caption(f"**Live Sync:** {now.strftime('%A, %d %B %Y | %I:%M %p')}")
+# Stream 1
+st.markdown('<div class="stream-header">📂 STREAM 1: Performance ROI DNA</div>', unsafe_allow_html=True)
+s1_files = st.file_uploader("Upload Performance CSVs", type="csv", accept_multiple_files=True, key="main_s1")
+ranked_s1, c_s1 = None, None
+if s1_files:
+    df_s1 = pd.concat([pd.read_csv(f) for f in s1_files], ignore_index=True)
+    ranked_s1, c_s1 = process_data(df_s1, "Stream 1")
 
-    # --- DATA LOAD ---
-    EXCEL_URL = "https://github.com/Yashraisharma/content-engineer-app/raw/main/cohort_sheets.xlsx.xlsx"
-    @st.cache_data
-    def get_data():
+st.divider()
+
+# Stream 2
+st.markdown('<div class="stream-header">📂 STREAM 2: Structural Style DNA</div>', unsafe_allow_html=True)
+s2_file = st.file_uploader("Upload Style CSV", type="csv", key="main_s2")
+ranked_s2, c_s2 = None, None
+if s2_file:
+    df_s2 = pd.read_csv(s2_file)
+    ranked_s2, c_s2 = process_data(df_s2, "Stream 2")
+
+st.divider()
+
+# --- THE MASTER GENERATE ENGINE ---
+if st.button("🚀 MASTER GENERATE: SYNTHESIZE PERFORMANCE & STYLE"):
+    if not ACTIVE_KEY:
+        st.error("Missing API Key. Please check your .streamlit/secrets.toml file.")
+    elif not (ranked_s1 is not None or ranked_s2 is not None):
+        st.error("Please upload data files before generating.")
+    else:
         try:
-            sheets = ["top 6 cities", "pharma_focus _category_new", "Daily_pharma_portfolio_segment"]
-            rows = []
-            for s in sheets:
-                df = pd.read_excel(EXCEL_URL, sheet_name=s, engine='openpyxl').dropna(how='all')
-                for i in range(0, len(df), 2):
-                    r = df.iloc[i]
-                    if str(r.iloc[0]).lower() in ['city', 'category', 'segment']: continue
-                    rows.append({'Name': str(r.iloc[0]).strip(), 'Total': int(r.iloc[1]), 'WA': int(r.iloc[7]), 'Push': int(r.iloc[3]), 'SMS': int(r.iloc[4]), 'Email': int(r.iloc[5])})
-            return pd.DataFrame(rows)
-        except: return pd.DataFrame()
-
-    df_master = get_data()
-    
-    if "selected_segments" not in st.session_state: st.session_state.selected_segments = []
-    def sync_picks(): st.session_state.selected_segments = st.session_state.ms_key
-
-    picks = st.multiselect("🔍 Select Target Cohorts:", options=df_master['Name'].unique().tolist() if not df_master.empty else [], default=st.session_state.selected_segments, key="ms_key", on_change=sync_picks)
-
-    if not picks:
-        st.info("👋 Select cohorts above to activate live intelligence.")
-        return
-
-    # --- ENGINE TABS ---
-    st.divider()
-    tabs = st.tabs([p for p in picks])
-
-    def apl_link(display_name):
-        url = f"https://www.apollopharmacy.in/search-medicines/{display_name.replace(' ', '%20')}"
-        return f'<a href="{url}" target="_blank" style="color: #1d4ed8; font-weight: 600;">🛒 {display_name}</a>'
-
-    for i, primary in enumerate(picks):
-        with tabs[i]:
-            p_lower = primary.lower()
-            city_key = next((c for c in DEMOGRAPHICS.keys() if c in p_lower), "hyderabad")
-            dna = DEMOGRAPHICS[city_key]
-            seg_key = next((k for k in SEGMENT_DEFS.keys() if k in p_lower), "active")
-            current_seg_def = SEGMENT_DEFS.get(seg_key, 'General Healthcare Cohort')
+            # Setup Model with the correct API string identifier
+            genai.configure(api_key=ACTIVE_KEY)
+            MODEL_NAME = 'gemini-1.5-flash' 
+            model = genai.GenerativeModel(MODEL_NAME)
             
-            with st.spinner("Syncing Live Context & Weather..."):
-                common_news = fetch_news(f"{city_key} top headlines")
-                health_news = fetch_news(f"{primary} healthcare trends India")
-                live_weather = fetch_live_weather(city_key, dna["fallback"])
-
-            # --- NATIVE STREAMLIT UI ---
-            st.markdown(f"### 🕵️ {primary.upper()}")
-            st.markdown(f"**Segment:** 📖 {current_seg_def} | **Location:** {city_key.upper()} ({live_weather})")
+            # Constraints: CIRCLE & Data Integrity
+            circle_logic = "STRICT: Do NOT mention 'CIRCLE' or 'Free Delivery' (Circle-only benefit)." if not circle_subscriber else "Target is a CIRCLE user. Highlight 'Unlimited Free Delivery'."
             
-            # Live News Block
-            st.write("#### 📡 Live Intelligence")
-            nc1, nc2 = st.columns(2)
-            nc1.info(f"**📰 Common News:** [{common_news['title']}]({common_news['link']})")
-            nc2.success(f"**🏥 Health News:** [{health_news['title']}]({health_news['link']})")
+            integrity_logic = f"""
+            DATA INTEGRITY RULES:
+            - SOURCE OF TRUTH: Use ONLY the offers/discounts in the Description: '{prod_description}'.
+            - DO NOT hallucinate discounts (e.g., 15% off) from the DNA samples if they aren't in the Description.
+            - DO NOT name the segment '{segment}' or sub-segment '{sub_segment}' in the text.
+            - AUDIENCE TRAITS: Address {seg_desc} and {sub_desc} implicitly.
+            """
+
+            # Gather DNA
+            s1_ctx = ranked_s1.head(10)[[c_s1, 'CTR_Disp']].to_string(index=False) if ranked_s1 is not None else "N/A"
+            s2_ctx = ranked_s2.head(10)[[c_s2]].to_string(index=False) if ranked_s2 is not None else "N/A"
             
-            # Demographics Block
-            st.write("#### 🧬 Cohort Demographics")
-            dc1, dc2, dc3, dc4 = st.columns(4)
-            dc1.metric("👵 Seniors", dna['seniors'])
-            dc2.metric("🍼 Moms", dna['moms'])
-            dc3.metric("👩 Female", dna['females'])
-            dc4.metric("📱 Tech Savvy", dna['tech'])
+            master_prompt = f"""
+            PRODUCT: {specific_product if specific_product else 'Main Line'}
+            DESCRIPTION: {prod_description}
+            GOAL: {intention}
+            KEYWORDS: {keywords_input}
             
-            st.divider()
+            {circle_logic}
+            {integrity_logic}
 
-            # --- LIVE AI GENERATION TRIGGER ---
-            st.subheader("🛒 Real-Time AI Strategy Matrix")
+            PERFORMANCE DNA (Stream 1): {s1_ctx}
+            STYLE DNA (Stream 2): {s2_ctx}
+
+            TASK: Generate 10 Variations in a Markdown Table with 6 columns:
+            1. New Message: The engineered copy (Replicate Stream 2 emoji/line-break style).
+            2. Reference: The DNA row from Stream 1 used for the angle.
+            3. Selection Logic: Why this matches the {intention}.
+            4. Strategic Lift: How text/emojis improve on the reference.
+            5. Segmentation Alignment: How {segment}/{sub_segment} traits were woven in.
+            6. Expected CTR: Realistic projection based on Stream 1.
+
+            CRITICAL: No introductory text. No hallucinated offers. Immediate table output.
+            """
             
-            ai_state_key = f"ai_data_{primary}"
-            if ai_state_key not in st.session_state:
-                st.session_state[ai_state_key] = None
-
-            if st.button("🧠 Generate Live Strategy", key=f"btn_{primary}"):
-                with st.spinner("AI is analyzing weather, city, and segment..."):
-                    ai_response = generate_live_ai_xsell(primary, current_seg_def, live_weather, city_key)
-                    if ai_response:
-                        st.session_state[ai_state_key] = ai_response
-
-            # RENDER THE TABLE
-            active_data = st.session_state[ai_state_key]
-            if active_data:
-                final_rows = [[apl_link(row[0]), apl_link(row[1]), row[2]] for row in active_data]
-                df_xsell = pd.DataFrame(final_rows, columns=["User Purchase", "Push (Linked)", "Live AI Reasoning"])
-                st.success("✅ AI Strategy Generated Successfully based on current context.")
-                st.markdown(df_xsell.to_html(escape=False, index=False), unsafe_allow_html=True)
-            else:
-                st.info("👆 Click 'Generate Live Strategy' to ping the AI and create 5 unique combinations for this segment right now.")
-
-            st.write("")
-
-    # --- AGGREGATED ROI FORECAST ---
-    st.divider()
-    stats = df_master[df_master['Name'].isin(picks)].sum(numeric_only=True)
-    st.subheader("🧬 Aggregated Reach & ROI")
-    m1, m2, m3, m4, m5 = st.columns(5)
-    m1.metric("Total Base", f"{int(stats['Total']):,}")
-    m2.metric("WhatsApp", f"{int(stats['WA']):,}")
-    m3.metric("Mobile Push", f"{int(stats['Push']):,}")
-    m4.metric("SMS", f"{int(stats['SMS']):,}")
-    m5.metric("Email", f"{int(stats.get('Email', 0)):,}")
-
-    cv1, cv2, cv3 = st.columns(3)
-    wa_rate = cv1.number_input("WA Cost", value=0.78)
-    sms_rate = cv2.number_input("SMS Cost", value=0.13)
-    email_rate = cv3.number_input("Email Cost", value=0.03)
-    
-    f1, f2 = st.columns(2)
-    conv = f1.slider("Conv Rate (%)", 0.1, 5.0, 1.0)
-    aov = f2.number_input("AOV (₹)", value=800)
-
-    def calc(name, reach, cost):
-        rev = (reach * (conv/100)) * aov
-        spend = reach * cost
-        return {"Channel": name, "Reach": f"{int(reach):,}", "Spend": f"₹{int(spend):,}", "Revenue": f"₹{int(rev):,}", "ROI": f"{(rev/spend):.1f}x" if spend > 0 else "0.0x"}
-
-    st.table(pd.DataFrame([
-        calc("Push", stats['Push'], 0.0), 
-        calc("WhatsApp", stats['WA'], wa_rate), 
-        calc("SMS", stats['SMS'], sms_rate), 
-        calc("Email", stats.get('Email', 0), email_rate)
-    ]))
+            with st.spinner("Synthesizing Strategy with Gemini..."):
+                res = model.generate_content(master_prompt)
+                st.markdown("### 🏆 Master Engineered Content Strategy")
+                st.markdown(highlight_keywords(res.text, keywords_input), unsafe_allow_html=True)
+                
+        except Exception as e:
+            st.error(f"Execution Error: {e}")
