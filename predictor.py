@@ -13,7 +13,6 @@ def run_page():
         try:
             df = pd.read_excel(EXCEL_URL, sheet_name=sheet_name, engine='openpyxl').dropna(how='all').reset_index(drop=True)
             clean_data = []
-            # Logic Y: Universal 2-row "Stitch" for raw headcounts
             for i in range(0, len(df), 2):
                 if i+1 >= len(df): break
                 row_names = df.iloc[i]
@@ -41,7 +40,7 @@ def run_page():
     email_cost = st.sidebar.number_input("Email", value=0.03, step=0.01)
     push_cost = 0.00
 
-    # 3. CORE SELECTION & CIRCLE INTEL
+    # 3. CORE SELECTION
     view_type = st.radio("Targeting Dimension:", ["top 6 cities", "pharma_focus _category_new", "Daily_pharma_portfolio_segment", "Circle_Activate_status"], horizontal=True)
     df_active = load_and_stitch_volume(view_type)
     
@@ -50,15 +49,27 @@ def run_page():
         data = df_active[df_active['Name'] == target].iloc[0]
         
         st.divider()
+
+        # --- NEW SECTION: FULL COHORT STATS ---
+        st.subheader(f"🧬 Cohort DNA: {target}")
         
+        # Displaying ALL Raw Stats at once
+        s1, s2, s3, s4, s5 = st.columns(5)
+        s1.metric("Total Base", f"{data['Total_Audience']:,}")
+        s2.metric("WhatsApp", f"{data['WA_Raw']:,}")
+        s3.metric("Mobile Push", f"{data['Mobile_Push_Raw']:,}")
+        s4.metric("SMS", f"{data['SMS_Raw']:,}")
+        s5.metric("Email", f"{data['Email_Raw']:,}")
+
         # 4. CONVERSION PARAMETERS
+        st.divider()
         st.subheader("🔮 Forecasting Parameters")
         p1, p2 = st.columns(2)
         conv_rate = p1.slider("Expected Conversion Rate (%)", 0.1, 5.0, 1.0, 0.1)
         aov = p2.number_input("Average Order Value (₹)", value=800)
 
-        # 5. FULL CHANNEL COMPARISON TABLE (The Master View)
-        st.subheader(f"📊 Full Base Reach & Cost: {target}")
+        # 5. FULL CHANNEL COMPARISON TABLE
+        st.subheader("📊 Channel ROI Analysis")
         
         def calc_metrics(name, reach, unit_cost):
             revenue = (reach * (conv_rate / 100)) * aov
@@ -67,9 +78,9 @@ def run_page():
             roi = revenue / spend if spend > 0 else 0
             return {
                 "Channel": name,
-                "Reach (Users)": f"{int(reach):,}",
-                "Spend": f"₹{int(spend):,}",
-                "Revenue": f"₹{int(revenue):,}",
+                "Reach (Headcount)": f"{int(reach):,}",
+                "Est. Spend": f"₹{int(spend):,}",
+                "Proj. Revenue": f"₹{int(revenue):,}",
                 "Net Profit": f"₹{int(net_profit):,}",
                 "ROI": f"{roi:.1f}x" if spend > 0 else "∞ (Free)"
             }
@@ -82,19 +93,17 @@ def run_page():
         ]
         st.table(pd.DataFrame(comparison))
 
-        # 6. CIRCLE PENETRATION (Stitched Insight)
+        # 6. CIRCLE PENETRATION
         if view_type != "Circle_Activate_status":
             st.divider()
-            st.subheader("⭕ Circle Status Snapshot")
+            st.subheader("⭕ Global Circle Context")
             df_c = load_and_stitch_volume("Circle_Activate_status")
             if df_c is not None:
-                # Assuming 'Circle Member' or 'Active' exists in your Circle sheet
-                c_data = df_c.iloc[0] # Grabbing top-line Circle volume
+                c_data = df_c.iloc[0] 
                 c1, c2, c3 = st.columns(3)
-                c1.metric("Total Circle Base", f"{c_data['Total_Audience']:,}")
+                c1.metric("Total Circle Members", f"{c_data['Total_Audience']:,}")
                 c2.metric("Circle Push Reach", f"{c_data['Mobile_Push_Raw']:,}")
                 c3.metric("Circle WA Reach", f"{c_data['WA_Raw']:,}")
-                st.caption("Note: This reflects the global Circle base. Localized city/category Circle splits are currently derived from the proportional contribution of the selected segment.")
 
         # 7. STRATEGIC VERDICT
         st.divider()
@@ -102,8 +111,8 @@ def run_page():
         incremental_rev = (paid_lift_users * (conv_rate/100)) * aov
         wa_spend = paid_lift_users * wa_cost
         
-        st.write("### 💡 Final Growth Verdict")
+        st.write("### 💡 Strategy Verdict")
         if incremental_rev > (wa_spend * 3):
-            st.success(f"**PROCEED:** WhatsApp lift adds **₹{int(incremental_rev):,}** in revenue vs **₹{int(wa_spend):,}** spend. Highly Profitable.")
+            st.success(f"**PROCEED:** WhatsApp lift adds **₹{int(incremental_rev):,}** in revenue vs **₹{int(wa_spend):,}** spend.")
         else:
-            st.warning("**CAUTION:** Marginal ROI. Consider using **SMS (Vi)** or strictly free **Mobile Push** to protect margins.")
+            st.warning("**CAUTION:** Marginal ROI. Stick to free **Mobile Push** or **SMS (Vi)** to protect margins.")
