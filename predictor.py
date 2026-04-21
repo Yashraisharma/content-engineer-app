@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ET
 import json
 import google.generativeai as genai
 
-# --- 1. LIVE UTILITIES ---
+# --- 1. LIVE UTILITIES (NEWS & ENTERPRISE WEATHER) ---
 @st.cache_data(ttl=300)
 def fetch_news(query, count=1):
     url = f"https://news.google.com/rss/search?q={query}&hl=en-IN&gl=IN&ceid=IN:en"
@@ -19,28 +19,41 @@ def fetch_news(query, count=1):
     except: pass
     return {"title": "News Feed Offline", "link": "#"}
 
-def get_clean_weather(city, fallback_string):
-    """Aggressively cleans live weather to remove corrupted characters."""
-    try:
-        # The &m flag ensures metric, the &T removes terminal sequences
-        url = f"https://wttr.in/{city}?format=%t+|+%C+|+Humidity:+%h&m&T"
-        res = requests.get(url, timeout=3)
+@st.cache_data(ttl=300)
+def fetch_live_weather(city_key, fallback_string):
+    """Fetches highly accurate, real-time weather using Open-Meteo API (No Key Required)"""
+    # Exact coordinates for pinpoint accuracy
+    coords = {
+        "mumbai": (19.0760, 72.8777), "delhi": (28.6139, 77.2090),
+        "bangalore": (12.9716, 77.5946), "hyderabad": (17.3850, 78.4867),
+        "chennai": (13.0827, 80.2707), "kolkata": (22.5726, 88.3639)
+    }
+    
+    if city_key not in coords:
+        return fallback_string
         
-        if res.status_code == 200 and "Unknown" not in res.text and "<html" not in res.text.lower():
-            # Force encoding to utf-8 then decode to remove 'Â' and other weird artifacts
-            raw_text = res.content.decode('utf-8', errors='ignore').strip()
-            
-            # Clean up weird characters like +31°C or Â°C
-            clean_text = raw_text.replace("+", "").replace("Â", "")
-            return f"🌡️ {clean_text}"
-            
+    lat, lon = coords[city_key]
+    
+    try:
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,weather_code"
+        res = requests.get(url, timeout=5).json()
+        
+        current = res.get("current", {})
+        temp = current.get("temperature_2m", "--")
+        humidity = current.get("relative_humidity_2m", "--")
+        code = current.get("weather_code", 0)
+        
+        # WMO Weather interpretation codes
+        if code == 0: condition = "Clear"
+        elif code in [1, 2, 3]: condition = "Partly Cloudy"
+        elif code in [45, 48]: condition = "Haze"
+        elif code in [51, 53, 55, 61, 63, 65]: condition = "Rain"
+        elif code in [95, 96, 99]: condition = "Thunderstorm"
+        else: condition = "Mist"
+        
+        return f"🌡️ {temp}°C | {condition} | Humidity: {humidity}%"
+    except:
         return fallback_string
-    except: 
-        return fallback_string
-
-# We don't cache the weather so it pulls fresh on every selection change
-def fetch_live_weather(city, fallback):
-    return get_clean_weather(city, fallback)
 
 # --- 2. THE REAL-TIME AI GENERATOR ---
 def generate_live_ai_xsell(category, segment_def, weather, city):
