@@ -19,10 +19,9 @@ def fetch_news(query, count=1):
     except: pass
     return {"title": "News Feed Offline", "link": "#"}
 
-@st.cache_data(ttl=300)
+# CACHE REMOVED: This forces a true, real-time pull every single time the page refreshes.
 def fetch_live_weather(city_key, fallback_string):
-    """Fetches highly accurate, real-time weather using Open-Meteo API (No Key Required)"""
-    # Exact coordinates for pinpoint accuracy
+    """Fetches highly accurate, real-time weather using Open-Meteo API locked to IST."""
     coords = {
         "mumbai": (19.0760, 72.8777), "delhi": (28.6139, 77.2090),
         "bangalore": (12.9716, 77.5946), "hyderabad": (17.3850, 78.4867),
@@ -35,24 +34,31 @@ def fetch_live_weather(city_key, fallback_string):
     lat, lon = coords[city_key]
     
     try:
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,weather_code"
-        res = requests.get(url, timeout=5).json()
+        # Added timezone=Asia/Kolkata to guarantee exact local temperature
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,weather_code&timezone=Asia%2FKolkata"
         
-        current = res.get("current", {})
-        temp = current.get("temperature_2m", "--")
-        humidity = current.get("relative_humidity_2m", "--")
-        code = current.get("weather_code", 0)
+        # Added standard headers so the API doesn't block the Streamlit request
+        headers = {"User-Agent": "Mozilla/5.0"}
+        res = requests.get(url, headers=headers, timeout=5).json()
         
-        # WMO Weather interpretation codes
-        if code == 0: condition = "Clear"
-        elif code in [1, 2, 3]: condition = "Partly Cloudy"
-        elif code in [45, 48]: condition = "Haze"
-        elif code in [51, 53, 55, 61, 63, 65]: condition = "Rain"
-        elif code in [95, 96, 99]: condition = "Thunderstorm"
-        else: condition = "Mist"
-        
-        return f"🌡️ {temp}°C | {condition} | Humidity: {humidity}%"
-    except:
+        if "current" in res:
+            current = res["current"]
+            temp = current.get("temperature_2m", "--")
+            humidity = current.get("relative_humidity_2m", "--")
+            code = current.get("weather_code", 0)
+            
+            # WMO Weather interpretation codes
+            if code == 0: condition = "Clear"
+            elif code in [1, 2, 3]: condition = "Partly Cloudy"
+            elif code in [45, 48]: condition = "Haze"
+            elif code in [51, 53, 55, 61, 63, 65, 80, 81, 82]: condition = "Rain"
+            elif code in [95, 96, 99]: condition = "Thunderstorm"
+            else: condition = "Mist"
+            
+            return f"🌡️ {temp}°C | {condition} | Humidity: {humidity}%"
+        else:
+            return fallback_string
+    except Exception as e:
         return fallback_string
 
 # --- 2. THE REAL-TIME AI GENERATOR ---
