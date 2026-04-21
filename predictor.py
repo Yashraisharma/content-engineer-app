@@ -4,10 +4,9 @@ from datetime import datetime
 import requests
 import xml.etree.ElementTree as ET
 
-# --- 1. LIVE GOOGLE NEWS & WEATHER ENGINE ---
+# --- 1. LIVE GOOGLE NEWS ENGINE ---
 @st.cache_data(ttl=600)
 def fetch_live_news(query, count=2):
-    """Fetches real-time headlines from Google News RSS."""
     url = f"https://news.google.com/rss/search?q={query}&hl=en-IN&gl=IN&ceid=IN:en"
     try:
         response = requests.get(url, timeout=5)
@@ -16,23 +15,22 @@ def fetch_live_news(query, count=2):
     except:
         return [{"title": "Live news feed temporarily unavailable", "link": "#"}]
 
-# 2026 Demographic & Environment Benchmarks
+# 2026 DEMOGRAPHIC DNA (STRICT PERCENTAGES)
 CITY_DNA = {
-    "mumbai": {"temp": "31°C", "seniors": "14.8%", "m_f": "853:1000", "moms": "2.8M", "tech": "92%", "weather": "🌡️ 31°C | Mist | Humidity 63%"},
-    "delhi": {"temp": "36°C", "seniors": "12.2%", "m_f": "868:1000", "moms": "3.2M", "tech": "91%", "weather": "🌡️ 36°C | Heat Alert (Mist/Humidity 21%)"},
-    "bangalore": {"temp": "31°C", "seniors": "11.5%", "m_f": "923:1000", "moms": "1.8M", "tech": "96%", "weather": "🌡️ 31°C | Clear | Humidity 36%"},
-    "hyderabad": {"temp": "35°C", "seniors": "10.9%", "m_f": "955:1000", "moms": "1.4M", "tech": "94%", "weather": "🌡️ 35°C | Yellow Alert | Humidity 35%"},
-    "chennai": {"temp": "30°C", "seniors": "15.2%", "m_f": "989:1000", "moms": "1.2M", "tech": "90%", "weather": "🌡️ 30°C | Partly Cloudy | Humidity 79%"},
-    "kolkata": {"temp": "30°C", "seniors": "16.1%", "m_f": "908:1000", "moms": "1.6M", "tech": "86%", "weather": "🌡️ 30°C | Mist | Humidity 84%"}
+    "mumbai": {"temp": "31°C", "seniors": "14.8%", "females": "46.1%", "moms": "12.4%", "tech": "92%"},
+    "delhi": {"temp": "36°C", "seniors": "12.2%", "females": "46.5%", "moms": "13.8%", "tech": "91%"},
+    "bangalore": {"temp": "31°C", "seniors": "11.5%", "females": "47.9%", "moms": "12.1%", "tech": "96%"},
+    "hyderabad": {"temp": "35°C", "seniors": "10.9%", "females": "48.8%", "moms": "11.9%", "tech": "94%"},
+    "chennai": {"temp": "30°C", "seniors": "15.2%", "females": "49.7%", "moms": "10.5%", "tech": "90%"},
+    "kolkata": {"temp": "30°C", "seniors": "16.1%", "females": "47.5%", "moms": "11.2%", "tech": "86%"}
 }
 
 def run_page():
-    # --- 2. CORE CONFIG ---
     now = datetime.now()
-    st.header("🛡️ Strategic Growth Command & ROI Predictor")
-    st.markdown(f"**Growth Engine Status:** ACTIVE | {now.strftime('%A, %d %B %Y | %I:%M %p')}")
+    st.header("🛡️ Strategic Growth Predictor")
+    st.markdown(f"**System Sync:** {now.strftime('%A, %d %B %Y | %I:%M %p')}")
 
-    # 3. EXCEL DATA INTEGRATION
+    # --- DATA SOURCE ---
     EXCEL_URL = "https://github.com/Yashraisharma/content-engineer-app/raw/main/cohort_sheets.xlsx.xlsx"
     @st.cache_data
     def get_data():
@@ -54,80 +52,67 @@ def run_page():
 
     df_master = get_data()
 
-    # --- 4. THE GLITCH-FREE SELECTION ---
+    # --- SELECTION ---
     if "selected_segments" not in st.session_state: st.session_state.selected_segments = []
     def sync_picks(): st.session_state.selected_segments = st.session_state.ms_key
 
-    st.sidebar.title("🎮 Targeting Matrix")
-    is_circle = st.sidebar.checkbox("🟢 Target CIRCLE Members")
-
-    picks = st.multiselect("🔍 Select Cohorts (Cities, Categories, Segments):", 
+    picks = st.multiselect("🔍 Select Target Cohorts:", 
                            options=df_master['Name'].unique().tolist() if not df_master.empty else [],
                            default=st.session_state.selected_segments, key="ms_key", on_change=sync_picks)
 
     if not picks:
-        st.info("👋 Select a target cohort above to reveal real-time intelligence.")
+        st.info("👋 Select a target cohort to reveal live context.")
         return
 
-    # --- 5. THE LIVE INTELLIGENCE LOOP ---
+    # --- LIVE INTELLIGENCE ENGINE ---
     st.divider()
     tabs = st.tabs([p for p in picks])
 
     for i, primary in enumerate(picks):
         with tabs[i]:
             p_lower = primary.lower()
-            city = next((c for c in CITY_DNA.keys() if c in p_lower), "hyderabad")
-            dna = CITY_DNA[city]
+            city_key = next((c for c in CITY_DNA.keys() if c in p_lower), "hyderabad")
+            dna = CITY_DNA[city_key]
             
-            # --- FETCH LIVE CONTEXT ---
-            with st.spinner(f"Querying Google for {primary}..."):
-                # Real-Time IPL & Events (April 21, 2026)
-                if city == "hyderabad": 
-                    local_news = "🏏 IPL 2026: SRH vs DC @ Uppal Stadium (7:30 PM). Traffic curbs active."
-                elif city == "delhi": 
-                    local_news = "🏛️ Civil Services Day: VP Radhakrishnan to address civil servants today."
-                else: 
-                    local_news = fetch_live_news(f"{city} top news headlines April 21 2026", 1)[0]['title']
-                
-                health_news = fetch_live_news(f"India healthcare news {primary} April 2026", 1)[0]
+            with st.spinner(f"Fetching live data for {primary}..."):
+                news_feed = fetch_live_news(f"{city_key} {primary} health news April 2026", 1)[0]
 
-            # --- THE INTELLIGENCE CARD ---
+            # --- PERCENTAGE-ONLY INTELLIGENCE CARD ---
             st.markdown(f"""
-                <div style="background-color: #f8fafc; border: 3px solid #1e293b; padding: 25px; border-radius: 15px; color: #000; margin-bottom: 25px;">
+                <div style="background-color: #f8fafc; border: 2px solid #1e293b; padding: 25px; border-radius: 15px; color: #000; margin-bottom: 25px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <h2 style="margin:0;">🕵️ {primary.upper()}</h2>
-                        <span style="background: #ef4444; color:#fff; padding: 5px 15px; border-radius: 20px; font-weight: bold;">{dna['weather']}</span>
+                        <span style="background: #ef4444; color:#fff; padding: 5px 15px; border-radius: 20px; font-weight: bold;">{dna['temp']} | {city_key.upper()}</span>
                     </div>
-                    <p style="background: #e2e8f0; padding: 12px; border-radius: 8px; border-left: 5px solid #1e293b; margin: 15px 0; font-size: 0.95em;">
-                        <b>🔥 Live Event:</b> {local_news}<br>
-                        <b>🏥 Health Focus:</b> <a href="{health_news['link']}" target="_blank" style="color:#1d4ed8;">{health_news['title']}</a>
+                    <p style="background: #fff; padding: 12px; border-radius: 8px; border: 1px solid #ddd; margin: 15px 0;">
+                        <b>🏥 Live Health Context:</b> <a href="{news_feed['link']}" target="_blank" style="color:#1d4ed8;">{news_feed['title']}</a>
                     </p>
-                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; font-size: 0.85em;">
-                        <div style="background:#fff; padding:12px; border-radius:8px; border:1px solid #ddd; text-align:center;">👵 <b>Seniors:</b><br>{dna['seniors']}</div>
-                        <div style="background:#fff; padding:12px; border-radius:8px; border:1px solid #ddd; text-align:center;">🍼 <b>Moms (2026):</b><br>{dna['moms']}</div>
-                        <div style="background:#fff; padding:12px; border-radius:8px; border:1px solid #ddd; text-align:center;">👫 <b>M/F Ratio:</b><br>{dna['m_f']}</div>
-                        <div style="background:#fff; padding:12px; border-radius:8px; border:1px solid #ddd; text-align:center;">📱 <b>Tech Savvy:</b><br>{dna['tech']}</div>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                        <div style="background:#f1f5f9; padding:12px; border-radius:8px; text-align:center;">👵 <b>Seniors</b><br>{dna['seniors']}</div>
+                        <div style="background:#f1f5f9; padding:12px; border-radius:8px; text-align:center;">🍼 <b>Moms</b><br>{dna['moms']}</div>
+                        <div style="background:#f1f5f9; padding:12px; border-radius:8px; text-align:center;">👩 <b>Females</b><br>{dna['females']}</div>
+                        <div style="background:#f1f5f9; padding:12px; border-radius:8px; text-align:center;">📱 <b>Tech Savvy</b><br>{dna['tech']}</div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
 
-            # --- DYNAMIC BASKET AFFINITY (HIERARCHY FIXED) ---
-            if any(x in p_lower for x in ["mom", "baby"]): p1, p2, p1_u = "Pampers Baby-Dry", "Himalaya Wipes", "baby-care"
-            elif any(x in p_lower for x in ["cardio", "diag", "chronic"]): p1, p2, p1_u = "Apollo Digital BP Monitor", "OneTouch Select Plus", "health-devices"
-            elif "skin" in p_lower: p1, p2, p1_u = "Cetaphil Gentle Cleanser", "Apollo SPF 50 Sunscreen", "skin-care"
-            else: p1, p2, p1_u = "ORSL Electrolyte Orange", "Apollo SPF 50 Sunscreen", "otc"
-
-            # --- CROSS-SELL UI ---
-            st.write("### 🛒 Strategic Cross-Sell (Basket Affinity)")
+            # --- PRODUCT & STRATEGY ---
+            st.write("### 🛒 Strategic Cross-Sell")
             c1, c2, c3 = st.columns([1, 1, 1.5])
-            c1.info(f"**Primary Push:** [{p1}](https://www.apollopharmacy.in/shop-by-category/{p1_u})")
-            c2.success(f"**Logical Upsell:** {p2}")
-            c3.warning(f"**🧠 AI Pitch Strategy:** {'🚨 WINBACK: Offer 25% OFF' if 'churn' in p_lower else '⭐ NTU: 15% Welcome Coupon' if 'ntu' in p_lower else '👑 CIRCLE: Priority 2HR Delivery'}")
+            
+            # Simple category product logic
+            prod = "Pampers Baby-Dry" if "mom" in p_lower else "Apollo BP Monitor" if "cardio" in p_lower else "ORSL Electrolyte"
+            link = "baby-care" if "mom" in p_lower else "health-devices" if "cardio" in p_lower else "otc"
+            
+            c1.info(f"**Push:** [{prod}](https://www.apollopharmacy.in/shop-by-category/{link})")
+            c2.success(f"**Logical Upsell:** {'Himalaya Wipes' if 'mom' in p_lower else 'SPF 50 Sunscreen'}")
+            c3.warning(f"**🧠 Pitch Strategy:** {'🚨 WINBACK: 25% OFF' if 'churn' in p_lower else '⭐ NTU: 15% Welcome'}")
 
-    # --- 6. AGGREGATED REACH DNA & ROI ---
+    # --- REACH & ROI MATH ---
     st.divider()
     stats = df_master[df_master['Name'].isin(picks)].sum(numeric_only=True)
-    st.subheader(f"🧬 Aggregated ROI: {len(picks)} Segments")
+    st.subheader("🧬 Aggregated ROI Forecast")
+    
     m1, m2, m3, m4, m5 = st.columns(5)
     m1.metric("Total Base", f"{int(stats['Total']):,}")
     m2.metric("WhatsApp", f"{int(stats['WA']):,}")
@@ -142,7 +127,7 @@ def run_page():
     
     f1, f2 = st.columns(2)
     conv = f1.slider("Conv Rate (%)", 0.1, 5.0, 1.0)
-    aov = f2.number_input("Average Order Value (₹)", value=800)
+    aov = f2.number_input("AOV (₹)", value=800)
 
     def calc(name, reach, cost):
         rev = (reach * (conv/100)) * aov
