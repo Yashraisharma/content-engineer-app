@@ -29,7 +29,7 @@ CITY_DNA = {
 def run_page():
     now = datetime.now()
     st.header("🛡️ Strategic Growth Predictor")
-    st.markdown(f"**Live Sync:** {now.strftime('%A, %d %B %Y')} | **Engine:** Live API v4")
+    st.markdown(f"**Live Sync:** {now.strftime('%A, %d %B %Y')} | **Engine:** Live API v5")
 
     # --- DATA ENGINE ---
     EXCEL_URL = "https://github.com/Yashraisharma/content-engineer-app/raw/main/cohort_sheets.xlsx.xlsx"
@@ -101,46 +101,51 @@ def run_page():
                 </div>
             """, unsafe_allow_html=True)
 
-            # --- 4. THE 5-ROW CROSS-SELL TABLE ---
+            # --- 4. THE 5-ROW CROSS-SELL TABLE (WITH DIRECT APOLLO LINKS) ---
             st.subheader("🛒 Strategic Cross-Sell Matrix")
             
+            # Helper function to generate Markdown links
+            def apl_link(name, path):
+                return f'<a href="https://www.apollopharmacy.in/shop-by-category/{path}" target="_blank">{name}</a>'
+
             if "mom" in p_lower or "baby" in p_lower:
                 xsell_data = [
-                    ["Pampers / Huggies Diapers", "Himalaya / Littles Baby Wipes", "90% basket affinity; wipes are consumed per diaper change."],
-                    ["Baby Formula (NAN/Similac)", "Bottle Sterilizer / Liquid Cleanser", "Safety protocol intent; requires sterile feeding gear."],
-                    ["Baby Body Wash / Soap", "Baby Lotion / Massage Oil", "Complete post-bath routine bundling."],
-                    ["Diaper Rash Cream", "Baby Powder (Talc-free)", "Complete moisture and rash prevention protocol."],
-                    ["Teethers / Pacifiers", "Colic Drops / Gripe Water", "Symptom pairing; teething often causes gastric distress."]
+                    ["Pampers / Huggies Diapers", apl_link("Himalaya / Littles Baby Wipes", "baby-care/baby-wipes"), "90% basket affinity; wipes are consumed per diaper change."],
+                    ["Baby Formula (NAN/Similac)", apl_link("Bottle Sterilizer / Liquid Cleanser", "baby-care"), "Safety protocol intent; requires sterile feeding gear."],
+                    ["Baby Body Wash / Soap", apl_link("Baby Lotion / Massage Oil", "baby-care"), "Complete post-bath routine bundling."],
+                    ["Diaper Rash Cream", apl_link("Baby Powder (Talc-free)", "baby-care"), "Complete moisture and rash prevention protocol."],
+                    ["Teethers / Pacifiers", apl_link("Colic Drops / Gripe Water", "baby-care"), "Symptom pairing; teething often causes gastric distress."]
                 ]
             elif "cardio" in p_lower or "diab" in p_lower or "diag" in p_lower:
                 xsell_data = [
-                    ["Glucometer Strips", "Lancets & Alcohol Swabs", "Razor-blade model; essential consumables for blood testing."],
-                    ["Blood Pressure Monitor", "Digital Thermometer / Pulse Ox", "Baseline home-health kit completion for chronic patients."],
-                    ["Heart Statins / Meds", "Omega-3 / Fish Oil Capsules", "Supplementing prescription care with heart-healthy lipids."],
-                    ["Diabetic Footwear / Socks", "Diabetic Foot Care Cream", "Neuropathy prevention and daily care protocol."],
-                    ["Artificial Sweeteners", "Sugar-Free Protein Powder", "Lifestyle transition; moving to a complete diabetic diet."]
+                    ["Glucometer Strips", apl_link("Lancets & Alcohol Swabs", "diabetes-care"), "Razor-blade model; essential consumables for blood testing."],
+                    ["Blood Pressure Monitor", apl_link("Digital Thermometer / Pulse Ox", "health-devices"), "Baseline home-health kit completion for chronic patients."],
+                    ["Heart Statins / Meds", apl_link("Omega-3 / Fish Oil Capsules", "elderly-care"), "Supplementing prescription care with heart-healthy lipids."],
+                    ["Diabetic Footwear / Socks", apl_link("Diabetic Foot Care Cream", "diabetes-care"), "Neuropathy prevention and daily care protocol."],
+                    ["Artificial Sweeteners", apl_link("Sugar-Free Protein Powder", "diabetes-supplements"), "Lifestyle transition; moving to a complete diabetic diet."]
                 ]
             elif "skin" in p_lower:
                 xsell_data = [
-                    ["Acne Face Wash / Salicylic", "Non-Comedogenic Sunscreen", "Core daytime routine; prevents post-acne hyperpigmentation."],
-                    ["AHA / BHA Exfoliant Serum", "Ceramide Heavy Moisturizer", "Barrier repair necessity after chemical exfoliation."],
-                    ["Vitamin C Serum", "SPF 50 Sunscreen", "Vitamin C boosts SPF efficacy and prevents photo-oxidation."],
-                    ["Body Wash / Shower Gel", "Loofah / Body Exfoliator", "Bath utility and routine completion bundling."],
-                    ["Aloe Vera Gel", "Calamine Lotion / Lacto Calamine", "Summer heatwave soothing bundle for irritated skin."]
+                    ["Acne Face Wash / Salicylic", apl_link("Non-Comedogenic Sunscreen", "apollo-personal-care"), "Core daytime routine; prevents post-acne hyperpigmentation."],
+                    ["AHA / BHA Exfoliant Serum", apl_link("Ceramide Heavy Moisturizer", "skin-care"), "Barrier repair necessity after chemical exfoliation."],
+                    ["Vitamin C Serum", apl_link("SPF 50 Sunscreen", "apollo-personal-care/sun-care"), "Vitamin C boosts SPF efficacy and prevents photo-oxidation."],
+                    ["Body Wash / Shower Gel", apl_link("Loofah / Body Exfoliator", "personal-care"), "Bath utility and routine completion bundling."],
+                    ["Aloe Vera Gel", apl_link("Calamine Lotion / Lacto Calamine", "skin-care"), "Summer heatwave soothing bundle for irritated skin."]
                 ]
             else: # General / Urban
                 xsell_data = [
-                    ["ORSL / Electrolytes", "SPF 50 Sunscreen / Odomos", "Complete outdoor heatwave and vector protection kit."],
-                    ["Multivitamins (Daily)", "Omega-3 Supplements", "Premium daily wellness stack for urban professionals."],
-                    ["Antacids / Digene / Eno", "Probiotic Supplements", "Gut health restoration and flora balance after acute acidity."],
-                    ["Paracetamol / Dolo 650", "Vicks / Cough Drops / Honitus", "Broad-spectrum viral symptom coverage (Fever + Throat)."],
-                    ["Anti-Hairfall Shampoo", "Hair Vitalizer Serum / Oil", "Comprehensive scalp care routine for urban stress/water issues."]
+                    ["ORSL / Electrolytes", apl_link("SPF 50 Sunscreen / Odomos", "apollo-personal-care"), "Complete outdoor heatwave and vector protection kit."],
+                    ["Multivitamins (Daily)", apl_link("Omega-3 Supplements", "vitamins-and-supplements"), "Premium daily wellness stack for urban professionals."],
+                    ["Antacids / Digene / Eno", apl_link("Probiotic Supplements", "otc"), "Gut health restoration and flora balance after acute acidity."],
+                    ["Paracetamol / Dolo 650", apl_link("Vicks / Cough Drops / Honitus", "otc"), "Broad-spectrum viral symptom coverage (Fever + Throat)."],
+                    ["Anti-Hairfall Shampoo", apl_link("Hair Vitalizer Serum / Oil", "personal-care"), "Comprehensive scalp care routine for urban stress/water issues."]
                 ]
 
             df_xsell = pd.DataFrame(xsell_data, columns=["User Purchase", "Push", "Reason why suggested"])
             
-            # Using st.table for a clean, non-interactive tabular display
-            st.table(df_xsell)
+            # Using st.markdown to render the HTML links inside the dataframe correctly
+            st.markdown(df_xsell.to_html(escape=False, index=False), unsafe_allow_html=True)
+            st.write("") # Adds a little padding after the table
 
     # --- 5. ROI FORECAST ---
     st.divider()
@@ -148,3 +153,22 @@ def run_page():
     st.subheader("🧬 Aggregated Reach & ROI")
     m1, m2, m3, m4, m5 = st.columns(5)
     m1.metric("Total", f"{int(stats['Total']):,}"); m2.metric("WA", f"{int(stats['WA']):,}"); m3.metric("Push", f"{int(stats['Push']):,}"); m4.metric("SMS", f"{int(stats['SMS']):,}"); m5.metric("Email", f"{int(stats['Email']):,}")
+
+    col_v1, col_v2, col_v3 = st.columns(3)
+    wa_rate = col_v1.number_input("WA Cost", value=0.78)
+    sms_rate = col_v2.number_input("SMS Cost", value=0.13)
+    email_rate = col_v3.number_input("Email Cost", value=0.03)
+    
+    f1, f2 = st.columns(2)
+    conv = f1.slider("Conv Rate (%)", 0.1, 5.0, 1.0)
+    aov = f2.number_input("Average Order Value (₹)", value=800)
+
+    def calc(name, reach, cost):
+        rev = (reach * (conv/100)) * aov
+        spend = reach * cost
+        return {"Channel": name, "Reach": f"{int(reach):,}", "Spend": f"₹{int(spend):,}", "Revenue": f"₹{int(rev):,}", "ROI": f"{(rev/spend):.1f}x" if spend > 0 else "∞"}
+
+    st.table(pd.DataFrame([
+        calc("Mobile Push", stats['Push'], 0.0), calc("WhatsApp", stats['WA'], wa_rate), 
+        calc("SMS", stats['SMS'], sms_rate), calc("Email", stats['Email'], email_rate)
+    ]))
