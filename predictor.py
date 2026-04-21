@@ -37,7 +37,7 @@ def fetch_live_weather(city_key, fallback):
         if "current" in res:
             c = res["current"]
             cond = "Clear" if c['weather_code'] == 0 else "Rain" if c['weather_code'] > 50 else "Cloudy"
-            return f"{c['temperature_2m']}°C | {cond} | Humidity: {c['relative_humidity_2m']}%"
+            return f"{c['temperature_2m']}°C | {cond} | Hum: {c['relative_humidity_2m']}%"
     except: pass
     return fallback
 
@@ -48,7 +48,7 @@ def generate_live_ai_xsell(sheet, name, segment, weather, city, api_key):
         prompt = f"""
         Role: Clinical Retail Strategist for Apollo Pharmacy India.
         Context: City: {city} | Weather: {weather} | Source Sheet: {sheet} | Target: {name} | Segment: {segment}.
-        Task: Generate 5 specific pharmacy cross-sell pairs. 
+        Task: Generate 5 specific pharmacy cross-sell pairs based on these conditions. 
         Format: Return ONLY a JSON array of arrays: [["Anchor", "Cross-Sell", "Strategic Reason"]]
         """
         response = model.generate_content(prompt)
@@ -60,7 +60,7 @@ def generate_live_ai_xsell(sheet, name, segment, weather, city, api_key):
 
 DEMOGRAPHICS = {
     "mumbai": {"seniors": "14.8%", "females": "46.1%", "moms": "12.4%", "tech": "92%", "fallback": "31°C | Mist"},
-    "delhi": {"seniors": "12.2%", "females": "46.5%", "moms": "13.8%", "tech": "91%", "fallback": "36°C | Heat"},
+    "delhi": {"seniors": "12.2%", "females": "46.5%", "moms": "13.8%", "tech": "91%", "fallback": "36°C | Heat Alert"},
     "bangalore": {"seniors": "11.5%", "females": "47.9%", "moms": "12.1%", "tech": "96%", "fallback": "31°C | Clear"},
     "hyderabad": {"seniors": "10.9%", "females": "48.8%", "moms": "11.9%", "tech": "94%", "fallback": "35°C | Yellow Alert"},
     "chennai": {"seniors": "15.2%", "females": "49.7%", "moms": "10.5%", "tech": "90%", "fallback": "30°C | Cloudy"},
@@ -83,7 +83,7 @@ def run_page():
     st.header("🛡️ Strategic Growth Predictor")
     st.caption(f"**Live Sync:** {now.strftime('%A, %d %B %Y | %I:%M %p')}")
 
-    # --- DATA PARSER: Mapping to EXACT Excel Sheets ---
+    # --- DATA PARSER ---
     EXCEL_URL = "https://github.com/Yashraisharma/content-engineer-app/raw/main/cohort_sheets.xlsx.xlsx"
     
     @st.cache_data
@@ -98,14 +98,11 @@ def run_page():
                 while i < len(df) - 1:
                     r1, r2 = df.iloc[i], df.iloc[i+1]
                     id_val, name_val = str(r1.iloc[0]).strip(), str(r2.iloc[0]).strip()
-                    
-                    if id_val.lower() in ['city', 'category', 'segment', 'nan', 'none']:
+                    if id_val.lower() in ['city', 'category', 'segment', 'nan']:
                         i += 1
                         continue
-                    
                     ui = f"{name_val} ({id_val})" if len(name_val) > 2 and name_val.lower() != 'nan' else id_val
                     ai = name_val if len(name_val) > 2 and name_val.lower() != 'nan' else id_val
-                    
                     try:
                         all_rows.append({
                             'UI_Name': ui, 'AI_Name': ai, 'Sheet_Key': s,
@@ -116,45 +113,29 @@ def run_page():
                             'Email': int(float(r1.iloc[5])) if not pd.isna(r1.iloc[5]) else 0
                         })
                         i += 2 
-                    except:
-                        i += 1
+                    except: i += 1
             return all_rows
         except Exception as e:
-            st.error(f"Excel Error: {e}")
-            return []
+            st.error(f"Excel Error: {e}"); return []
 
     data = get_data()
 
-    # --- BUCKETING LOGIC: Using Actual Sheet Names and Real Tags ---
+    # --- BUCKETING LOGIC ---
     city_rows, focus_rows, daily_rows, circle_rows, sku_rows = [], [], [], [], []
-    
-    # Aggressive Regex for City Codes (hyd, blr, etc.)
     city_tag = re.compile(r'(?i)\b(hyd|hyder|hyderabad|blr|bang|bangalore|del|delhi|mum|mumbai|chn|chennai|kol|kolkata|ncr)\b')
 
     for r in data:
         n, s = r['UI_Name'].lower(), r['Sheet_Key'].lower()
-        
-        # 1. City: Either from 'top 6 cities' sheet OR has city tag
-        if s == 'top 6 cities' or city_tag.search(n):
-            city_rows.append(r)
-        # 2. Focus Category: From 'pharma_focus _category_new' sheet
-        elif 'pharma_focus' in s:
-            focus_rows.append(r)
-        # 3. Daily Pharma: From 'daily_pharma_portfolio_segment' sheet
-        elif 'daily_pharma' in s:
-            daily_rows.append(r)
-        # 4. Circle: Based on name tag
-        elif 'circle' in n:
-            circle_rows.append(r)
-        # 5. SKU Based: Everything else (ID-only or Product Specific)
-        else:
-            sku_rows.append(r)
+        if s == 'top 6 cities' or city_tag.search(n): city_rows.append(r)
+        elif 'pharma_focus' in s: focus_rows.append(r)
+        elif 'daily_pharma' in s: daily_rows.append(r)
+        elif 'circle' in n: circle_rows.append(r)
+        else: sku_rows.append(r)
 
-    # --- UI: THE 5 REQUIRED SELECTION BLOCKS ---
+    # --- SELECTION MATRIX ---
     st.markdown("### 📂 Selection Matrix")
     sel = []
     c1, c2, c3, c4, c5 = st.columns(5)
-    
     with c1:
         opts = {r['UI_Name']: r for r in city_rows}
         p1 = st.multiselect("🏙️ City", options=list(opts.keys()))
@@ -177,69 +158,77 @@ def run_page():
         for x in p5: sel.append(opts[x])
 
     if not sel:
-        st.info("👋 Select cohorts above to activate live intelligence.")
-        return
+        st.info("👋 Select cohorts above to begin analysis."); return
 
-    # --- ENGINE TABS ---
+    # --- TABS & CONTENT ---
     st.divider()
     tabs = st.tabs([c['AI_Name'][:22] for c in sel])
 
-    def apl_link(val):
-        url = f"https://www.apollopharmacy.in/search-medicines/{val.replace(' ', '%20')}"
-        return f'<a href="{url}" target="_blank" style="color: #1d4ed8; font-weight: 600;">🛒 {val}</a>'
-
     for i, cohort in enumerate(sel):
         with tabs[i]:
-            # Improved City Detection for Hyderabad/Bangalore
-            city_key = "hyderabad" # Default
+            city_key = "hyderabad"
             for k in DEMOGRAPHICS.keys():
                 if k[:3] in cohort['UI_Name'].lower() or k in cohort['UI_Name'].lower(): 
-                    city_key = k
-                    break
+                    city_key = k; break
             
             dna = DEMOGRAPHICS[city_key]
             weather = fetch_live_weather(city_key, dna['fallback'])
-            news = fetch_news(f"{city_key} health trends")
             seg_def = next((v for k,v in SEGMENT_DEFS.items() if k in cohort['UI_Name'].lower()), "Standard Cohort")
 
+            # UI Header & News
             st.markdown(f"### 🕵️ {cohort['UI_Name']}")
-            st.markdown(f"**Source Sheet:** `{cohort['Sheet_Key']}` | **Location:** {city_key.upper()} ({weather})")
-            st.info(f"📰 **Live Intelligence:** [{news['title']}]({news['link']})")
+            st.markdown(f"**Location:** {city_key.upper()} ({weather})")
+            
+            nc1, nc2 = st.columns(2)
+            common_news = fetch_news(f"{city_key} public news")
+            health_news = fetch_news(f"{cohort['AI_Name']} health news India")
+            nc1.info(f"**📰 Common News:** [{common_news['title']}]({common_news['link']})")
+            nc2.success(f"**🏥 Health News:** [{health_news['title']}]({health_news['link']})")
+
+            # Demographics
+            st.write("#### 🧬 Cohort Demographics")
+            dc1, dc2, dc3, dc4 = st.columns(4)
+            dc1.metric("👵 Seniors", dna['seniors'])
+            dc2.metric("🍼 Moms", dna['moms'])
+            dc3.metric("👩 Female", dna['females'])
+            dc4.metric("📱 Tech Savvy", dna['tech'])
 
             # AI Strategy
             st.divider()
-            st.subheader("🛒 Real-Time AI Strategy Matrix")
             state_key = f"ai_st_{cohort['UI_Name']}"
-            api_key = st.secrets["GEMINI_API_KEY"]
-            
             if state_key not in st.session_state or st.session_state[state_key] is None:
-                with st.spinner("Analyzing context..."):
-                    st.session_state[state_key] = generate_live_ai_xsell(cohort['Sheet_Key'], cohort['AI_Name'], seg_def, weather, city_key, api_key)
+                with st.spinner("AI Brainstorming..."):
+                    st.session_state[state_key] = generate_live_ai_xsell(cohort['Sheet_Key'], cohort['AI_Name'], seg_def, weather, city_key, st.secrets["GEMINI_API_KEY"])
 
             if st.button("🔄 Refresh Strategy", key=f"re_{i}"):
-                st.session_state[state_key] = generate_live_ai_xsell(cohort['Sheet_Key'], cohort['AI_Name'], seg_def, weather, city_key, api_key)
+                st.session_state[state_key] = generate_live_ai_xsell(cohort['Sheet_Key'], cohort['AI_Name'], seg_def, weather, city_key, st.secrets["GEMINI_API_KEY"])
 
             if st.session_state[state_key]:
-                formatted = [[apl_link(r[0]), apl_link(r[1]), r[2]] for r in st.session_state[state_key]]
-                df_out = pd.DataFrame(formatted, columns=["Anchor Product", "Cross-Sell Product", "Reasoning"])
+                def apl(v): return f'<a href="https://www.apollopharmacy.in/search-medicines/{v.replace(" ","%20")}" target="_blank">🛒 {v}</a>'
+                formatted = [[apl(r[0]), apl(r[1]), r[2]] for r in st.session_state[state_key]]
+                df_out = pd.DataFrame(formatted, columns=["Anchor", "Cross-Sell", "Reasoning"])
                 st.markdown(df_out.to_html(escape=False, index=False), unsafe_allow_html=True)
 
-    # --- AGGREGATED ROI ---
+    # --- AGGREGATED ROI FORECAST ---
     st.divider()
-    t_base = sum(c['Total'] for c in sel)
-    t_wa = sum(c['WA'] for c in sel)
-    t_push = sum(c['Push'] for c in sel)
-    t_sms = sum(c['SMS'] for c in sel)
-    t_email = sum(c['Email'] for c in sel)
-
-    st.subheader("🧬 Aggregated Reach & ROI")
+    t_base, t_wa, t_push, t_sms, t_email = sum(c['Total'] for c in sel), sum(c['WA'] for c in sel), sum(c['Push'] for c in sel), sum(c['SMS'] for c in sel), sum(c['Email'] for c in sel)
+    
+    st.subheader("🧬 Aggregated ROI Forecast")
     m1, m2, m3, m4, m5 = st.columns(5)
-    m1.metric("Total Base", f"{t_base:,}")
-    m2.metric("WhatsApp", f"{t_wa:,}")
-    m3.metric("Push", f"{t_push:,}")
-    m4.metric("SMS", f"{t_sms:,}")
-    m5.metric("Email", f"{t_email:,}")
+    m1.metric("Total Base", f"{t_base:,}"); m2.metric("WhatsApp", f"{t_wa:,}"); m3.metric("Push", f"{t_push:,}"); m4.metric("SMS", f"{t_sms:,}"); m5.metric("Email", f"{t_email:,}")
+
+    cv1, cv2, cv3 = st.columns(3)
+    wa_r, sms_r, email_r = cv1.number_input("WA Cost (₹)", 0.78), cv2.number_input("SMS Cost (₹)", 0.13), cv3.number_input("Email Cost (₹)", 0.03)
+    f1, f2 = st.columns(2)
+    conv, aov = f1.slider("Conversion Rate (%)", 0.1, 5.0, 1.0), f2.number_input("Avg Order Value (₹)", 800)
+
+    def calc(name, reach, cost):
+        rev = (reach * (conv/100)) * aov
+        spend = reach * cost
+        roi = (rev/spend) if spend > 0 else 0
+        return {"Channel": name, "Reach": f"{int(reach):,}", "Spend": f"₹{int(spend):,}", "Revenue": f"₹{int(rev):,}", "ROI": f"{roi:.1f}x"}
+
+    st.table(pd.DataFrame([calc("Push", t_push, 0.0), calc("WA", t_wa, wa_r), calc("SMS", t_sms, sms_r), calc("Email", t_email, email_r)]))
 
 if __name__ == "__main__":
-    st.set_page_config(page_title="Strategic Growth Predictor", layout="wide")
-    run_page()
+    st.set_page_config(page_title="Strategic Growth Predictor", layout="wide"); run_page()
