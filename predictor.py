@@ -19,21 +19,31 @@ def fetch_news(query, count=1):
     except: pass
     return {"title": "News Feed Offline", "link": "#"}
 
-@st.cache_data(ttl=300)
-def fetch_live_weather(city, fallback_string):
-    """Fetches live weather in Celsius."""
+def get_clean_weather(city, fallback_string):
+    """Aggressively cleans live weather to remove corrupted characters."""
     try:
-        url = f"https://wttr.in/{city}?format=%t+|+%C+|+Humidity:+%h&m"
+        # The &m flag ensures metric, the &T removes terminal sequences
+        url = f"https://wttr.in/{city}?format=%t+|+%C+|+Humidity:+%h&m&T"
         res = requests.get(url, timeout=3)
+        
         if res.status_code == 200 and "Unknown" not in res.text and "<html" not in res.text.lower():
-            clean_text = res.text.replace("+", "").strip()
+            # Force encoding to utf-8 then decode to remove 'Â' and other weird artifacts
+            raw_text = res.content.decode('utf-8', errors='ignore').strip()
+            
+            # Clean up weird characters like +31°C or Â°C
+            clean_text = raw_text.replace("+", "").replace("Â", "")
             return f"🌡️ {clean_text}"
+            
         return fallback_string
-    except: return fallback_string
+    except: 
+        return fallback_string
+
+# We don't cache the weather so it pulls fresh on every selection change
+def fetch_live_weather(city, fallback):
+    return get_clean_weather(city, fallback)
 
 # --- 2. THE REAL-TIME AI GENERATOR ---
 def generate_live_ai_xsell(category, segment_def, weather, city):
-    """Calls Gemini API to generate real-time strategies."""
     try:
         model = genai.GenerativeModel('gemini-1.5-flash')
         prompt = f"""
@@ -124,7 +134,7 @@ def run_page():
                 health_news = fetch_news(f"{primary} healthcare trends India")
                 live_weather = fetch_live_weather(city_key, dna["fallback"])
 
-            # --- NATIVE STREAMLIT UI: GUARANTEED TO RENDER ---
+            # --- NATIVE STREAMLIT UI ---
             st.markdown(f"### 🕵️ {primary.upper()}")
             st.markdown(f"**Segment:** 📖 {current_seg_def} | **Location:** {city_key.upper()} ({live_weather})")
             
