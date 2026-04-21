@@ -17,7 +17,8 @@ def fetch_news(query, count=2):
 @st.cache_data(ttl=300)
 def fetch_live_weather(city):
     try:
-        url = f"https://wttr.in/{city}?format=%t+|+%C+|+Humidity:+%h"
+        # Added '&m' to force Metric units (Celsius)
+        url = f"https://wttr.in/{city}?format=%t+|+%C+|+Humidity:+%h&m"
         res = requests.get(url, timeout=5)
         return f"🌡️ {res.text.strip()}" if res.status_code == 200 else "🌡️ Live Weather Syncing..."
     except: return "🌡️ Weather Service Offline"
@@ -33,12 +34,14 @@ DEMOGRAPHICS = {
 }
 
 SEGMENT_DEFS = {
-    "ntu": "Non-Transacting User (0 txns in 60 days)",
-    "churn": "Lapsed users with high risk of permanent exit",
-    "winback": "Old NTU users showing early signs of return",
-    "active": "Early-stage users (1-3 transactions)",
-    "power": "Loyalists (At the 4th transaction pivot)",
-    "enhancement": "High-LTV users with high purchase frequency"
+    "ntu": "Non-Transacting Users (0 transactions in 60 days)",
+    "churn": "Old users coming every 30 days and transacting",
+    "winback": "Old NTU users coming back",
+    "active": "Users with 1, 2, or 3 transactions only",
+    "power": "Users hitting their 4th transaction",
+    "enhancement": "High-volume users with many transactions",
+    "new registered": "Newly registered users without transaction history",
+    "circle": "Premium Apollo Circle Subscription members"
 }
 
 def run_page():
@@ -63,8 +66,11 @@ def run_page():
         except: return pd.DataFrame()
 
     df_master = get_data()
-    picks = st.multiselect("🔍 Select Target Cohorts:", options=df_master['Name'].unique().tolist() if not df_master.empty else [], default=st.session_state.get("selected_segments", []), key="ms_key")
-    st.session_state.selected_segments = picks
+    
+    if "selected_segments" not in st.session_state: st.session_state.selected_segments = []
+    def sync_picks(): st.session_state.selected_segments = st.session_state.ms_key
+
+    picks = st.multiselect("🔍 Select Target Cohorts:", options=df_master['Name'].unique().tolist() if not df_master.empty else [], default=st.session_state.selected_segments, key="ms_key", on_change=sync_picks)
 
     if not picks:
         st.info("👋 Select cohorts above to activate live intelligence.")
@@ -98,7 +104,7 @@ def run_page():
                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                         <div>
                             <h2 style="margin:0;">🕵️ {primary.upper()}</h2>
-                            <span style="background: #e2e8f0; color: #334155; padding: 4px 12px; border-radius: 15px; font-size: 0.85em; font-weight: 600;">📖 {SEGMENT_DEFS.get(seg_key, 'General')}</span>
+                            <span style="background: #e2e8f0; color: #334155; padding: 4px 12px; border-radius: 15px; font-size: 0.85em; font-weight: 600;">📖 {SEGMENT_DEFS.get(seg_key, 'General Healthcare Cohort')}</span>
                         </div>
                         <span style="background: #ef4444; color:#fff; padding: 5px 15px; border-radius: 20px; font-weight: bold;">{live_weather} | {city_key.upper()}</span>
                     </div>
@@ -121,27 +127,35 @@ def run_page():
             # Category-Based Affinity Rules
             if "mom" in p_lower or "baby" in p_lower:
                 base_data = [
-                    ["Pampers Taped Diapers", "Himalaya Wet Wipes", "High-frequency consumption match; 1:1 usage ratio."],
-                    ["Nestle NAN PRO 2", "Dr. Browns Sterilizer", "Health safety hook; formula users require sterile gear."],
+                    ["Pampers New Baby Taped Diapers", "Apollo Life Wet Wipes", "High-frequency consumption match; 1:1 usage ratio."],
+                    ["Nestle NAN PRO 2", "Morisons Feeding Bottle", "Health safety hook; formula users require sterile gear."],
                     ["Johnsons Baby Wash", "Sebamed Baby Lotion", "Complete post-bath skin moisture routine."],
-                    ["Diaper Rash Cream", "Mamaearth Dusting Powder", "Dermatological protection bundle for infants."],
-                    ["Nuby Teether", "Woodwards Gripe Water", "Teething leads to irritability; stomach relief is the logical next buy."]
+                    ["Himalaya Diaper Rash Cream", "Mamaearth Baby Powder", "Dermatological protection bundle for infants."],
+                    ["Silicone Teether", "Woodwards Gripe Water", "Teething leads to irritability; stomach relief is the logical next buy."]
                 ]
-            elif "cardio" in p_lower or "diab" in p_lower:
+            elif "cardio" in p_lower or "diab" in p_lower or "diag" in p_lower:
                 base_data = [
-                    ["OneTouch Select Plus Strips", "Alcohol Swabs & Lancets", "Essential consumables for every blood glucose check."],
-                    ["Digital BP Monitor", "Pulse Oximeter", "Vital health kit; cardio patients monitor oxygen & pressure."],
-                    ["GNC Fish Oil 1000mg", "Apollo Multivitamins", "Cardiac nutritional foundation; heart-healthy lipid stack."],
-                    ["Diabetic Socks", "Diabetic Foot Cream", "Neuropathy prevention; extremity care is high priority."],
-                    ["Protinex Diabetes Powder", "Sugar Free Gold", "Dietary conversion bundle for diabetic lifestyle."]
+                    ["OneTouch Select Plus", "OneTouch Lancets", "Essential consumables for every blood glucose check."],
+                    ["Omron Blood Pressure", "Accu-Chek Active Kit", "Vital health kit; cardio patients monitor oxygen & pressure."],
+                    ["GNC Fish Oil", "Apollo Life Multivitamin", "Cardiac nutritional foundation; heart-healthy lipid stack."],
+                    ["Diabetic Socks", "Diabetic Foot Care Cream", "Neuropathy prevention; extremity care is high priority."],
+                    ["Protinex Diabetes Care", "Sugar Free Gold", "Dietary conversion bundle for diabetic lifestyle."]
+                ]
+            elif "skin" in p_lower:
+                base_data = [
+                    ["Cetaphil Gentle Cleanser", "Cetaphil SPF 50", "Dermatologist routine; cleansers paired with photo-aging prevention."],
+                    ["Minimalist Salicylic", "Plum Green Tea Toner", "Barrier repair necessity after chemical exfoliation."],
+                    ["Garnier Micellar Water", "Bioderma Sensibio", "Premium upsell transition for urban cosmetic removal."],
+                    ["Pears Body Wash", "Nivea Body Milk", "Bath utility and moisture-lock routine completion."],
+                    ["Aloe Vera Gel", "Apollo Calamine", "Summer heatwave soothing bundle for irritated skin."]
                 ]
             else: # Urban General
                 base_data = [
-                    ["Prolyte ORS Orange", "Cetaphil SPF 50 Sunscreen", "Heatwave defense; hydration paired with UV protection."],
-                    ["Seven Seas Cod Liver Oil", "Apollo Vitamin C & Zinc", "Immunity anchor for office-going urbanites."],
-                    ["Eno Lemon Fruit Salt", "VSL#3 Probiotics", "Gut health restoration after seasonal acidity spikes."],
-                    ["Dolo 650mg Tablet", "Vicks VapoRub", "Broad viral symptom kit; fever + respiratory relief."],
-                    ["Indulekha Bringha Hair Oil", "Keratin Smooth Shampoo", "Cosmetic treatment bundle for hard-water damage."]
+                    ["ORS Orange", "Apollo Sunscreen SPF 50", "Heatwave defense; hydration paired with UV protection."],
+                    ["Seven Seas Cod Liver", "Apollo Vitamin C Zinc", "Immunity anchor for office-going urbanites."],
+                    ["Eno Lemon", "Probiotic Capsules", "Gut health restoration after seasonal acidity spikes."],
+                    ["Dolo 650", "Vicks VapoRub", "Broad viral symptom kit; fever + respiratory relief."],
+                    ["Indulekha Hair Oil", "Tresemme Keratin Shampoo", "Cosmetic treatment bundle for hard-water damage."]
                 ]
 
             # APPLY SEGMENT OVERRIDES
@@ -180,4 +194,4 @@ def run_page():
         spend = reach * cost
         return {"Channel": name, "Reach": f"{int(reach):,}", "Spend": f"₹{int(spend):,}", "Revenue": f"₹{int(rev):,}", "ROI": f"{(rev/spend):.1f}x" if spend > 0 else "0.0x"}
 
-    st.table(pd.DataFrame([calc("Push", stats['Push'], 0.0), calc("WhatsApp", stats['WA'], wa_rate), calc("SMS", stats['SMS'], sms_rate), calc("Email", stats['Email'], email_rate)]))
+    st.table(pd.DataFrame([calc("Push", stats['Push'], 0.0), calc("WhatsApp", stats['WA'], wa_rate), calc("SMS", stats['SMS'], sms_rate), calc("Email", stats.get('Email', 0), email_rate)]))
