@@ -6,10 +6,9 @@ def run_page():
     now = datetime.now()
     current_date = now.strftime("%A, %d %B %Y")
     
-    st.header("📊 Segment Analysis & Reach Predictor")
+    # 1. THE DATA ENGINE
     EXCEL_URL = "https://github.com/Yashraisharma/content-engineer-app/raw/main/cohort_sheets.xlsx.xlsx"
 
-    # --- 1. DATA LOADING ENGINE ---
     @st.cache_data
     def get_data():
         try:
@@ -30,23 +29,32 @@ def run_page():
                     })
             return pd.DataFrame(rows)
         except Exception as e:
-            st.error(f"Error loading data: {e}")
+            st.error(f"Error loading Excel: {e}")
             return pd.DataFrame()
 
     df_master = get_data()
 
-    # --- 2. SELECTION MANAGER ---
+    # --- 2. GLITCH FIX: SYNC SELECTION TO MEMORY ---
+    def sync_segments():
+        st.session_state.selected_segments = st.session_state.segment_widget_key
+
+    # Initialize session state if empty
+    if "selected_segments" not in st.session_state:
+        st.session_state.selected_segments = []
+
     st.sidebar.markdown("### 🎯 Segment Controls")
     if st.sidebar.button("🗑️ Reset All Filters"):
         st.session_state.selected_segments = []
         st.rerun()
 
+    # The Multiselect using a STABLE KEY and CALLBACK
     picks = st.multiselect(
-        "🔍 Search & Analyze Segments (linked to Code X):", 
+        "🔍 Search & Analyze Segments:", 
         options=df_master['Name'].unique().tolist(),
-        default=st.session_state.get("selected_segments", [])
+        default=st.session_state.selected_segments,
+        key="segment_widget_key",
+        on_change=sync_segments
     )
-    st.session_state.selected_segments = picks
 
     if not picks:
         st.info("👋 Select a segment from the search bar above to begin.")
@@ -55,26 +63,21 @@ def run_page():
     # --- 3. DYNAMIC INTEL ENGINE (PRIORITY: MOM > CHRONIC > CITY) ---
     primary = picks[0].lower()
     
-    # Priority 1: Motherhood
     if any(x in primary for x in ["mom", "baby", "infant", "pediatric", "mother"]):
         intel = {"old": "2%", "moms": "96%", "tech": "95%", "type": "Motherhood", "color": "#fdf2f8", "border": "#ec4899"}
         vibe = "🍼 New Parent / Baby Care"
         p1 = {"name": "Pampers All-Round Protection Diapers", "link": "https://www.apollopharmacy.in/shop-by-category/baby-care/diapers"}
-        p2 = {"name": "Himalaya Baby Wipes (80 Sheets Pack of 3)", "link": "https://www.apollopharmacy.in/shop-by-category/baby-care/baby-wipes"}
-    
-    # Priority 2: Chronic Conditions
+        p2 = {"name": "Himalaya Baby Wipes (Pack of 3)", "link": "https://www.apollopharmacy.in/shop-by-category/baby-care/baby-wipes"}
     elif any(x in primary for x in ["cardio", "diab", "pharma", "chronic", "sugar", "bp"]):
         intel = {"old": "75%", "moms": "1%", "tech": "42%", "type": "Chronic Patient", "color": "#f0fdf4", "border": "#22c55e"}
         vibe = "💊 Chronic/Elderly Care"
         p1 = {"name": "Apollo Pharmacy Digital BP Monitor", "link": "https://www.apollopharmacy.in/shop-by-category/health-devices/bp-monitors"}
         p2 = {"name": "OneTouch Select Plus Glucometer Strips", "link": "https://www.apollopharmacy.in/shop-by-category/diabetes-care/test-strips"}
-    
-    # Priority 3: City/Weather
     else:
         intel = {"old": "18%", "moms": "6%", "tech": "91%", "type": "Urban Consumer", "color": "#eff6ff", "border": "#3b82f6"}
         vibe = "🏢 Urban / City Focused"
         p1 = {"name": "ORSL Rehydrate Apple (Heatwave Essential)", "link": "https://www.apollopharmacy.in/shop-by-category/otc"}
-        p2 = {"name": "Apollo Pharmacy SPF 50 Sunscreen", "link": "https://www.apollopharmacy.in/shop-by-category/apollo-personal-care/sun-care"}
+        p2 = {"name": "Apollo Pharmacy SPF 50 Sunscreen", "link": "https://www.apollopharmacy.in/shop-by-category/apollo-personal-care"}
 
     # --- 4. HIGH-VISIBILITY INTELLIGENCE CARD ---
     st.markdown(f"""
@@ -83,16 +86,16 @@ def run_page():
             <p style="font-weight: bold; font-size: 1.2em; color: {intel['border']}; margin-bottom: 15px;">{vibe} | {current_date}</p>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
                 <div style="background: white; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
-                    <span style="font-size: 1.5em;">👵</span><br><b>Senior Citizens</b><br><span style="font-size: 1.2em; color: #1e293b;">{intel['old']}</span>
+                    <span style="font-size: 1.5em;">👵</span><br><b>Senior Citizens</b><br><span style="font-size: 1.2em;">{intel['old']}</span>
                 </div>
                 <div style="background: white; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
-                    <span style="font-size: 1.5em;">🍼</span><br><b>New Moms</b><br><span style="font-size: 1.2em; color: #1e293b;">{intel['moms']}</span>
+                    <span style="font-size: 1.5em;">🍼</span><br><b>New Moms</b><br><span style="font-size: 1.2em;">{intel['moms']}</span>
                 </div>
                 <div style="background: white; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
-                    <span style="font-size: 1.5em;">📱</span><br><b>Smartphone Savvy</b><br><span style="font-size: 1.2em; color: #1e293b;">{intel['tech']}</span>
+                    <span style="font-size: 1.5em;">📱</span><br><b>Smartphone Savvy</b><br><span style="font-size: 1.2em;">{intel['tech']}</span>
                 </div>
                 <div style="background: white; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
-                    <span style="font-size: 1.5em;">🏷️</span><br><b>Market Type</b><br><span style="font-size: 1.0em; color: #1e293b;">{intel['type']}</span>
+                    <span style="font-size: 1.5em;">🏷️</span><br><b>Market Type</b><br><span style="font-size: 1.0em;">{intel['type']}</span>
                 </div>
             </div>
         </div>
@@ -110,7 +113,6 @@ def run_page():
     st.divider()
     combined_data = df_master[df_master['Name'].isin(picks)].sum(numeric_only=True)
     st.subheader("🧬 Reach DNA (Aggregated)")
-    
     m1, m2, m3, m4, m5 = st.columns(5)
     m1.metric("Total Base", f"{int(combined_data['Total']):,}")
     m2.metric("WhatsApp", f"{int(combined_data['WA']):,}")
@@ -120,10 +122,8 @@ def run_page():
 
     st.divider()
     st.subheader("🔮 Campaign ROI Forecast")
-    
-    col_v1, col_v2 = st.columns(2)
-    wa_rate = col_v1.sidebar.number_input("WA Cost (Karix)", value=0.78)
-    sms_rate = col_v2.sidebar.number_input("SMS Cost (Vi)", value=0.13)
+    wa_rate = st.sidebar.number_input("WA Cost (Karix)", value=0.78)
+    sms_rate = st.sidebar.number_input("SMS Cost (Vi)", value=0.13)
     
     f1, f2 = st.columns(2)
     conv = f1.slider("Conversion Rate (%)", 0.1, 5.0, 1.0)
@@ -145,9 +145,8 @@ def run_page():
     lift_users = combined_data['WA'] - combined_data['Push']
     lift_rev = (lift_users * (conv/100)) * aov
     lift_cost = lift_users * wa_rate
-    
     st.markdown(f"### 💡 Growth Verdict")
     if lift_rev > (lift_cost * 3):
-        st.success(f"**PROCEED:** Incremental WA Profit Lift: **₹{int(lift_rev - lift_cost):,}**. High ROI campaign.")
+        st.success(f"**PROCEED:** Incremental Profit: **₹{int(lift_rev - lift_cost):,}**.")
     else:
-        st.warning("**CAUTION:** Marginal ROI. Consider free Mobile Push only.")
+        st.warning("**CAUTION:** Marginal ROI. Consider free channels.")
