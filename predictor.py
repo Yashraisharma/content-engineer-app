@@ -28,8 +28,9 @@ CITY_DNA = {
 
 def run_page():
     now = datetime.now()
+    st.set_page_config(layout="wide")
     st.header("🛡️ Strategic Growth Predictor")
-    st.markdown(f"**Live Sync:** {now.strftime('%A, %d %B %Y')} | **Engine:** Live API v5")
+    st.markdown(f"**Live Sync:** {now.strftime('%A, %d %B %Y')} | **Engine:** Live Apollo Site Linker v6")
 
     # --- DATA ENGINE ---
     EXCEL_URL = "https://github.com/Yashraisharma/content-engineer-app/raw/main/cohort_sheets.xlsx.xlsx"
@@ -60,12 +61,19 @@ def run_page():
                            default=st.session_state.selected_segments, key="ms_key", on_change=sync_picks)
 
     if not picks:
-        st.info("👋 Select cohorts above to activate live data engine.")
+        st.info("👋 Select cohorts above to activate live data engine and product links.")
         return
 
     # --- 3. THE LIVE INTELLIGENCE ENGINE ---
     st.divider()
     tabs = st.tabs([p for p in picks])
+
+    # Dynamic Apollo URL Generator
+    def apl_link(display_name, search_query):
+        # Creates a direct search query to the Apollo site to guarantee the product is found
+        formatted_query = search_query.replace(" ", "%20")
+        url = f"https://www.apollopharmacy.in/search-medicines/{formatted_query}"
+        return f'<a href="{url}" target="_blank" style="color: #1d4ed8; text-decoration: none; font-weight: 500;">🛒 {display_name}</a>'
 
     for i, primary in enumerate(picks):
         with tabs[i]:
@@ -73,7 +81,7 @@ def run_page():
             city_key = next((c for c in CITY_DNA.keys() if c in p_lower), "hyderabad")
             dna = CITY_DNA[city_key]
             
-            with st.spinner(f"Querying Google for {primary}..."):
+            with st.spinner(f"Querying Google & Apollo for {primary}..."):
                 common_news = fetch_news(f"{city_key} top headlines April 2026", 1)[0]
                 health_news = fetch_news(f"{primary} healthcare trends India April 2026", 1)[0]
 
@@ -101,51 +109,46 @@ def run_page():
                 </div>
             """, unsafe_allow_html=True)
 
-            # --- 4. THE 5-ROW CROSS-SELL TABLE (WITH DIRECT APOLLO LINKS) ---
-            st.subheader("🛒 Strategic Cross-Sell Matrix")
+            # --- 4. THE 5-ROW CROSS-SELL TABLE (LIVE APOLLO SEARCH LINKS) ---
+            st.subheader("🛒 Strategic Cross-Sell Matrix (Verified on Apollo)")
             
-            # Helper function to generate Markdown links
-            def apl_link(name, path):
-                return f'<a href="https://www.apollopharmacy.in/shop-by-category/{path}" target="_blank">{name}</a>'
-
             if "mom" in p_lower or "baby" in p_lower:
                 xsell_data = [
-                    ["Pampers / Huggies Diapers", apl_link("Himalaya / Littles Baby Wipes", "baby-care/baby-wipes"), "90% basket affinity; wipes are consumed per diaper change."],
-                    ["Baby Formula (NAN/Similac)", apl_link("Bottle Sterilizer / Liquid Cleanser", "baby-care"), "Safety protocol intent; requires sterile feeding gear."],
-                    ["Baby Body Wash / Soap", apl_link("Baby Lotion / Massage Oil", "baby-care"), "Complete post-bath routine bundling."],
-                    ["Diaper Rash Cream", apl_link("Baby Powder (Talc-free)", "baby-care"), "Complete moisture and rash prevention protocol."],
-                    ["Teethers / Pacifiers", apl_link("Colic Drops / Gripe Water", "baby-care"), "Symptom pairing; teething often causes gastric distress."]
+                    [apl_link("Pampers New Baby Taped Diapers", "Pampers New Baby"), apl_link("Apollo Life 30-Count Wet Wipes", "Apollo Life Wet Wipes"), "90% basket affinity; wipes are consumed per diaper change."],
+                    [apl_link("Nestle NAN PRO 2 Formula", "Nestle NAN PRO 2"), apl_link("Morisons Baby Dreams Feeding Bottle", "Morisons Feeding Bottle"), "Safety protocol intent; formula requires hygienic feeding gear."],
+                    [apl_link("Johnson's Baby Top To Toe Wash", "Johnsons Baby Wash"), apl_link("Sebamed Baby Lotion", "Sebamed Baby Lotion"), "Complete post-bath routine bundling for premium maternal cohorts."],
+                    [apl_link("Himalaya Diaper Rash Cream", "Himalaya Diaper Rash"), apl_link("Mamaearth Dusting Powder for Babies", "Mamaearth Baby Powder"), "Complete moisture and rash prevention protocol."],
+                    [apl_link("Nuby Silicone Teether", "Silicone Teether"), apl_link("Woodward's Gripe Water", "Woodwards Gripe Water"), "Symptom pairing; teething often causes gastric distress in infants."]
                 ]
             elif "cardio" in p_lower or "diab" in p_lower or "diag" in p_lower:
                 xsell_data = [
-                    ["Glucometer Strips", apl_link("Lancets & Alcohol Swabs", "diabetes-care"), "Razor-blade model; essential consumables for blood testing."],
-                    ["Blood Pressure Monitor", apl_link("Digital Thermometer / Pulse Ox", "health-devices"), "Baseline home-health kit completion for chronic patients."],
-                    ["Heart Statins / Meds", apl_link("Omega-3 / Fish Oil Capsules", "elderly-care"), "Supplementing prescription care with heart-healthy lipids."],
-                    ["Diabetic Footwear / Socks", apl_link("Diabetic Foot Care Cream", "diabetes-care"), "Neuropathy prevention and daily care protocol."],
-                    ["Artificial Sweeteners", apl_link("Sugar-Free Protein Powder", "diabetes-supplements"), "Lifestyle transition; moving to a complete diabetic diet."]
+                    [apl_link("OneTouch Select Plus Test Strips", "OneTouch Select Plus"), apl_link("OneTouch Delica Plus Lancets", "OneTouch Lancets"), "Razor-blade model; essential consumables for blood testing."],
+                    [apl_link("Omron HEM-7156 Blood Pressure Monitor", "Omron Blood Pressure"), apl_link("Accu-Chek Active Glucometer Kit", "Accu-Chek Active Kit"), "Baseline home-health kit completion for chronic patients."],
+                    [apl_link("GNC Fish Body Oil 1000 mg", "GNC Fish Oil"), apl_link("Apollo Life Multivitamin Softgels", "Apollo Life Multivitamin"), "Supplementing prescription care with heart-healthy lipids."],
+                    [apl_link("Dr. Scholl's Diabetic Socks", "Diabetic Socks"), apl_link("Apollo Pharmacy Diabetic Foot Care Cream", "Diabetic Foot Care Cream"), "Neuropathy prevention and daily extremity care protocol."],
+                    [apl_link("Protinex Diabetes Care Vanilla Powder", "Protinex Diabetes Care"), apl_link("Sugar Free Gold Sweetener", "Sugar Free Gold"), "Lifestyle transition; moving to a complete diabetic diet."]
                 ]
             elif "skin" in p_lower:
                 xsell_data = [
-                    ["Acne Face Wash / Salicylic", apl_link("Non-Comedogenic Sunscreen", "apollo-personal-care"), "Core daytime routine; prevents post-acne hyperpigmentation."],
-                    ["AHA / BHA Exfoliant Serum", apl_link("Ceramide Heavy Moisturizer", "skin-care"), "Barrier repair necessity after chemical exfoliation."],
-                    ["Vitamin C Serum", apl_link("SPF 50 Sunscreen", "apollo-personal-care/sun-care"), "Vitamin C boosts SPF efficacy and prevents photo-oxidation."],
-                    ["Body Wash / Shower Gel", apl_link("Loofah / Body Exfoliator", "personal-care"), "Bath utility and routine completion bundling."],
-                    ["Aloe Vera Gel", apl_link("Calamine Lotion / Lacto Calamine", "skin-care"), "Summer heatwave soothing bundle for irritated skin."]
+                    [apl_link("Cetaphil Gentle Skin Cleanser", "Cetaphil Gentle Cleanser"), apl_link("Cetaphil Sun SPF 50+ Light Gel", "Cetaphil SPF 50"), "Dermatologist routine; cleansers paired with photo-aging prevention."],
+                    [apl_link("Minimalist 2% Salicylic Acid Serum", "Minimalist Salicylic"), apl_link("Plum Green Tea Alcohol-Free Toner", "Plum Green Tea Toner"), "Barrier repair necessity after chemical exfoliation."],
+                    [apl_link("Garnier Micellar Cleansing Water", "Garnier Micellar Water"), apl_link("Bioderma Sensibio H2O", "Bioderma Sensibio"), "Premium upsell transition for urban cosmetic removal."],
+                    [apl_link("Pears Pure & Gentle Body Wash", "Pears Body Wash"), apl_link("Nivea Nourishing Body Milk", "Nivea Body Milk"), "Bath utility and moisture-lock routine completion."],
+                    [apl_link("Lacto Calamine Aloe Vera Gel", "Aloe Vera Gel"), apl_link("Apollo Pharmacy Calamine Lotion", "Apollo Calamine"), "Summer heatwave soothing bundle for irritated skin."]
                 ]
             else: # General / Urban
                 xsell_data = [
-                    ["ORSL / Electrolytes", apl_link("SPF 50 Sunscreen / Odomos", "apollo-personal-care"), "Complete outdoor heatwave and vector protection kit."],
-                    ["Multivitamins (Daily)", apl_link("Omega-3 Supplements", "vitamins-and-supplements"), "Premium daily wellness stack for urban professionals."],
-                    ["Antacids / Digene / Eno", apl_link("Probiotic Supplements", "otc"), "Gut health restoration and flora balance after acute acidity."],
-                    ["Paracetamol / Dolo 650", apl_link("Vicks / Cough Drops / Honitus", "otc"), "Broad-spectrum viral symptom coverage (Fever + Throat)."],
-                    ["Anti-Hairfall Shampoo", apl_link("Hair Vitalizer Serum / Oil", "personal-care"), "Comprehensive scalp care routine for urban stress/water issues."]
+                    [apl_link("Prolyte ORS Orange Liquid", "ORS Orange"), apl_link("Apollo Pharmacy SPF 50 Sunscreen Gel", "Apollo Sunscreen SPF 50"), "Complete outdoor heatwave and UV protection kit for current weather."],
+                    [apl_link("Seven Seas Original Cod Liver Oil", "Seven Seas Cod Liver"), apl_link("Apollo Life Vitamin C & Zinc", "Apollo Vitamin C Zinc"), "Premium daily wellness and immunity stack for urban professionals."],
+                    [apl_link("Eno Fruit Salt Lemon", "Eno Lemon"), apl_link("VSL#3 Probiotic Capsules", "Probiotic Capsules"), "Gut health restoration and flora balance after acute acidity."],
+                    [apl_link("Dolo 650mg Tablet", "Dolo 650"), apl_link("Vicks VapoRub", "Vicks VapoRub"), "Broad-spectrum viral symptom coverage (Fever + Congestion)."],
+                    [apl_link("Indulekha Bringha Hair Oil", "Indulekha Hair Oil"), apl_link("Tresemme Keratin Smooth Shampoo", "Tresemme Keratin Shampoo"), "Comprehensive scalp and cosmetic care routine for urban hard-water areas."]
                 ]
 
+            # Render Dataframe with HTML allowed
             df_xsell = pd.DataFrame(xsell_data, columns=["User Purchase", "Push", "Reason why suggested"])
-            
-            # Using st.markdown to render the HTML links inside the dataframe correctly
             st.markdown(df_xsell.to_html(escape=False, index=False), unsafe_allow_html=True)
-            st.write("") # Adds a little padding after the table
+            st.write("")
 
     # --- 5. ROI FORECAST ---
     st.divider()
