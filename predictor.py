@@ -4,7 +4,7 @@ from datetime import datetime
 import requests
 import xml.etree.ElementTree as ET
 
-# --- 1. LIVE GOOGLE NEWS API (RESTORED & FIXED) ---
+# --- 1. LIVE GOOGLE NEWS API ---
 @st.cache_data(ttl=300)
 def fetch_news(query, count=2):
     url = f"https://news.google.com/rss/search?q={query}&hl=en-IN&gl=IN&ceid=IN:en"
@@ -16,14 +16,14 @@ def fetch_news(query, count=2):
     except:
         return [{"title": "Live news feed temporarily unavailable", "link": "#"}]
 
-# --- 2. 2026 DEMOGRAPHIC DNA (STRICT PERCENTAGES) ---
+# --- 2. 2026 DEMOGRAPHIC DNA (PERCENTAGES) ---
 CITY_DNA = {
-    "mumbai": {"temp": "31°C", "seniors": "14.8%", "females": "46.1%", "moms": "12.4%", "tech": "92%"},
-    "delhi": {"temp": "36°C", "seniors": "12.2%", "females": "46.5%", "moms": "13.8%", "tech": "91%"},
-    "bangalore": {"temp": "31°C", "seniors": "11.5%", "females": "47.9%", "moms": "12.1%", "tech": "96%"},
-    "hyderabad": {"temp": "35°C", "seniors": "10.9%", "females": "48.8%", "moms": "11.9%", "tech": "94%"},
-    "chennai": {"temp": "30°C", "seniors": "15.2%", "females": "49.7%", "moms": "10.5%", "tech": "90%"},
-    "kolkata": {"temp": "30°C", "seniors": "16.1%", "females": "47.5%", "moms": "11.2%", "tech": "86%"}
+    "mumbai": {"temp": "31°C", "seniors": "14.8%", "females": "46.1%", "moms": "12.4%", "tech": "92%", "weather": "🌡️ 31°C | Mist | Humidity 63%"},
+    "delhi": {"temp": "36°C", "seniors": "12.2%", "females": "46.5%", "moms": "13.8%", "tech": "91%", "weather": "🌡️ 36°C | Heat Alert | Humidity 21%"},
+    "bangalore": {"temp": "31°C", "seniors": "11.5%", "females": "47.9%", "moms": "12.1%", "tech": "96%", "weather": "🌡️ 31°C | Clear | Humidity 36%"},
+    "hyderabad": {"temp": "35°C", "seniors": "10.9%", "females": "48.8%", "moms": "11.9%", "tech": "94%", "weather": "🌡️ 35°C | Yellow Alert | Humidity 35%"},
+    "chennai": {"temp": "30°C", "seniors": "15.2%", "females": "49.7%", "moms": "10.5%", "tech": "90%", "weather": "🌡️ 30°C | Partly Cloudy | Humidity 79%"},
+    "kolkata": {"temp": "30°C", "seniors": "16.1%", "females": "47.5%", "moms": "11.2%", "tech": "86%", "weather": "🌡️ 30°C | Mist | Humidity 84%"}
 }
 
 def run_page():
@@ -53,9 +53,11 @@ def run_page():
     df_master = get_data()
 
     # --- SELECTION ---
+    if "selected_segments" not in st.session_state: st.session_state.selected_segments = []
+    def sync_picks(): st.session_state.selected_segments = st.session_state.ms_key
+
     picks = st.multiselect("🔍 Select Cohorts:", options=df_master['Name'].unique().tolist() if not df_master.empty else [], 
-                           default=st.session_state.get("selected_segments", []), key="ms_key")
-    st.session_state.selected_segments = picks
+                           default=st.session_state.selected_segments, key="ms_key", on_change=sync_picks)
 
     if not picks:
         st.info("👋 Select cohorts above to activate live data engine.")
@@ -99,48 +101,46 @@ def run_page():
                 </div>
             """, unsafe_allow_html=True)
 
-            # --- 4. EXPANDED CROSS-SELL (5 POSSIBILITIES) ---
-            st.subheader("🛒 Strategic Cross-Sell: 5 Targeted Options")
+            # --- 4. THE 5-ROW CROSS-SELL TABLE ---
+            st.subheader("🛒 Strategic Cross-Sell Matrix")
             
             if "mom" in p_lower or "baby" in p_lower:
-                opts = [
-                    ("Pampers Baby-Dry Diapers", "baby-care/diapers", "Daily essential restock for infants."),
-                    ("Himalaya Gentle Baby Wipes", "baby-care/baby-wipes", "High-affinity item for diaper basket."),
-                    ("Nestle NAN PRO 2", "baby-care", "Nutritional base for growing babies."),
-                    ("Apollo Baby Lotion", "apollo-personal-care", "Skincare upsell for urban moms."),
-                    ("Sebamed Baby Wash", "baby-care", "Premium upsell for skin-sensitive cohorts.")
+                xsell_data = [
+                    ["Pampers / Huggies Diapers", "Himalaya / Littles Baby Wipes", "90% basket affinity; wipes are consumed per diaper change."],
+                    ["Baby Formula (NAN/Similac)", "Bottle Sterilizer / Liquid Cleanser", "Safety protocol intent; requires sterile feeding gear."],
+                    ["Baby Body Wash / Soap", "Baby Lotion / Massage Oil", "Complete post-bath routine bundling."],
+                    ["Diaper Rash Cream", "Baby Powder (Talc-free)", "Complete moisture and rash prevention protocol."],
+                    ["Teethers / Pacifiers", "Colic Drops / Gripe Water", "Symptom pairing; teething often causes gastric distress."]
                 ]
-            elif "cardio" in p_lower or "diab" in p_lower:
-                opts = [
-                    ("Apollo BP Monitor", "health-devices", "Critical monitoring for cardio patients."),
-                    ("OneTouch Select Plus Strips", "diabetes-care", "Razor-blade model for recurring strips."),
-                    ("Protinex Diabetes Care", "diabetes-supplements", "Nutritional filler for chronic patients."),
-                    ("Apollo Sugar-Free Protein", "diabetes-care", "Healthy supplement upsell."),
-                    ("Accu-Chek Active Monitor", "health-devices", "Brand-loyal alternative upsell.")
+            elif "cardio" in p_lower or "diab" in p_lower or "diag" in p_lower:
+                xsell_data = [
+                    ["Glucometer Strips", "Lancets & Alcohol Swabs", "Razor-blade model; essential consumables for blood testing."],
+                    ["Blood Pressure Monitor", "Digital Thermometer / Pulse Ox", "Baseline home-health kit completion for chronic patients."],
+                    ["Heart Statins / Meds", "Omega-3 / Fish Oil Capsules", "Supplementing prescription care with heart-healthy lipids."],
+                    ["Diabetic Footwear / Socks", "Diabetic Foot Care Cream", "Neuropathy prevention and daily care protocol."],
+                    ["Artificial Sweeteners", "Sugar-Free Protein Powder", "Lifestyle transition; moving to a complete diabetic diet."]
                 ]
             elif "skin" in p_lower:
-                opts = [
-                    ("Cetaphil Cleanser", "skin-care", "Dermatologist choice; high retention."),
-                    ("Apollo SPF 50 Sunscreen", "apollo-personal-care", "Immediate need for current heatwave."),
-                    ("Novology Acne Serum", "skin-care", "High-margin clinical serum upsell."),
-                    ("Bioderma Sensibio H2O", "skin-care", "Premium brand upsell for urbanites."),
-                    ("Apollo Aloe Vera Gel", "otc", "Post-sun exposure soothing cross-sell.")
+                xsell_data = [
+                    ["Acne Face Wash / Salicylic", "Non-Comedogenic Sunscreen", "Core daytime routine; prevents post-acne hyperpigmentation."],
+                    ["AHA / BHA Exfoliant Serum", "Ceramide Heavy Moisturizer", "Barrier repair necessity after chemical exfoliation."],
+                    ["Vitamin C Serum", "SPF 50 Sunscreen", "Vitamin C boosts SPF efficacy and prevents photo-oxidation."],
+                    ["Body Wash / Shower Gel", "Loofah / Body Exfoliator", "Bath utility and routine completion bundling."],
+                    ["Aloe Vera Gel", "Calamine Lotion / Lacto Calamine", "Summer heatwave soothing bundle for irritated skin."]
                 ]
-            else:
-                opts = [
-                    ("ORSL Electrolyte Orange", "otc", "Seasonal hydration due to current temp."),
-                    ("Apollo Multivitamins", "vitamins-and-supplements", "Daily wellness anchor."),
-                    ("Seven Seas Cod Liver Oil", "elderly-care", "Immunity booster for senior segments."),
-                    ("Dabur Honey (Immunity)", "health-drinks", "Natural health cross-sell."),
-                    ("Apollo Digital Thermometer", "health-devices", "Household essential for general cohorts.")
+            else: # General / Urban
+                xsell_data = [
+                    ["ORSL / Electrolytes", "SPF 50 Sunscreen / Odomos", "Complete outdoor heatwave and vector protection kit."],
+                    ["Multivitamins (Daily)", "Omega-3 Supplements", "Premium daily wellness stack for urban professionals."],
+                    ["Antacids / Digene / Eno", "Probiotic Supplements", "Gut health restoration and flora balance after acute acidity."],
+                    ["Paracetamol / Dolo 650", "Vicks / Cough Drops / Honitus", "Broad-spectrum viral symptom coverage (Fever + Throat)."],
+                    ["Anti-Hairfall Shampoo", "Hair Vitalizer Serum / Oil", "Comprehensive scalp care routine for urban stress/water issues."]
                 ]
 
-            cols = st.columns(5)
-            for idx, (name, link, reason) in enumerate(opts):
-                with cols[idx]:
-                    st.info(f"**#{idx+1}:** {name}")
-                    st.write(f"*{reason}*")
-                    st.markdown(f"[🔗 Shop Now](https://www.apollopharmacy.in/shop-by-category/{link})")
+            df_xsell = pd.DataFrame(xsell_data, columns=["User Purchase", "Push", "Reason why suggested"])
+            
+            # Using st.table for a clean, non-interactive tabular display
+            st.table(df_xsell)
 
     # --- 5. ROI FORECAST ---
     st.divider()
