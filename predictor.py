@@ -26,15 +26,15 @@ CITY_DNA = {
     "kolkata": {"temp": "30°C", "seniors": "16.1%", "females": "47.5%", "moms": "11.2%", "tech": "86%", "weather": "🌡️ 30°C | Mist | Humidity 84%"}
 }
 
-# The new dictionary to define the CRM segments
+# Updated CRM definitions based on exact business logic
 SEGMENT_DEFS = {
-    "ntu": "New Transacting User (First-time buyers with high acquisition cost)",
-    "churn": "Lapsed users with zero recent activity; high flight risk",
-    "winback": "Previously churned users targeted for aggressive reactivation",
-    "power": "High-frequency, high-LTV brand loyalists",
-    "enhancement": "Active users targeted for AOV/frequency up-selling",
-    "active": "Regular, engaged purchasing users",
-    "new registered": "Users with created accounts but zero historical purchases",
+    "ntu": "Non-Transacting Users (0 transactions in 60 days)",
+    "churn": "Old users coming every 30 days and transacting",
+    "winback": "Old NTU users coming back",
+    "active": "Users with 1, 2, or 3 transactions only",
+    "power": "Users hitting their 4th transaction",
+    "enhancement": "High-volume users with many transactions",
+    "new registered": "Newly registered users without transaction history",
     "circle": "Premium Apollo Circle Subscription members"
 }
 
@@ -94,8 +94,8 @@ def run_page():
             city_key = next((c for c in CITY_DNA.keys() if c in p_lower), "hyderabad")
             dna = CITY_DNA[city_key]
             
-            # Identify Segment Definition
-            seg_definition = "General Urban Healthcare Cohort"
+            # Identify Segment Definition dynamically
+            seg_definition = "General Healthcare Cohort"
             for key, definition in SEGMENT_DEFS.items():
                 if key in p_lower:
                     seg_definition = definition
@@ -105,7 +105,7 @@ def run_page():
                 common_news = fetch_news(f"{city_key} top headlines April 2026", 1)[0]
                 health_news = fetch_news(f"{primary} healthcare trends India April 2026", 1)[0]
 
-            # --- INTELLIGENCE CARD (NOW WITH SEGMENT DEFINITION) ---
+            # --- INTELLIGENCE CARD ---
             st.markdown(f"""
                 <div style="background-color: #f8fafc; border: 2px solid #1e293b; padding: 25px; border-radius: 15px; color: #000; margin-bottom: 25px;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
