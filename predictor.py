@@ -3,7 +3,7 @@ import pandas as pd
 
 def run_page():
     st.header("📊 Segment Analysis & Reach Predictor")
-    st.markdown("#### Logic Y: Multi-Channel Attribution & Circle Intelligence")
+    st.markdown("#### Logic Y: Multi-Channel Attribution")
     
     # 1. THE DATA SOURCE
     EXCEL_URL = "https://github.com/Yashraisharma/content-engineer-app/raw/main/cohort_sheets.xlsx.xlsx"
@@ -30,7 +30,7 @@ def run_page():
                 })
             return pd.DataFrame(clean_data)
         except Exception as e:
-            st.error(f"⚠️ Data Error on sheet '{sheet_name}': {e}")
+            st.error(f"⚠️ Data Error: {e}")
             return None
 
     # 2. VENDOR PRICING (Sidebar)
@@ -38,9 +38,9 @@ def run_page():
     wa_cost = st.sidebar.number_input("WhatsApp (Karix)", value=0.78, step=0.01)
     sms_cost = st.sidebar.number_input("SMS (Vi)", value=0.13, step=0.01)
     email_cost = st.sidebar.number_input("Email", value=0.03, step=0.01)
-    push_cost = 0.00
 
     # 3. CORE SELECTION
+    # Options for your specific Excel sheets
     view_type = st.radio("Targeting Dimension:", ["top 6 cities", "pharma_focus _category_new", "Daily_pharma_portfolio_segment", "Circle_Activate_status"], horizontal=True)
     df_active = load_and_stitch_volume(view_type)
     
@@ -50,10 +50,9 @@ def run_page():
         
         st.divider()
 
-        # --- NEW SECTION: FULL COHORT STATS ---
+        # --- SECTION: COHORT DNA (Universal Stats) ---
         st.subheader(f"🧬 Cohort DNA: {target}")
         
-        # Displaying ALL Raw Stats at once
         s1, s2, s3, s4, s5 = st.columns(5)
         s1.metric("Total Base", f"{data['Total_Audience']:,}")
         s2.metric("WhatsApp", f"{data['WA_Raw']:,}")
@@ -86,24 +85,16 @@ def run_page():
             }
 
         comparison = [
-            calc_metrics("Mobile Push", data['Mobile_Push_Raw'], push_cost),
+            calc_metrics("Mobile Push", data['Mobile_Push_Raw'], 0.0),
             calc_metrics("WhatsApp (Karix)", data['WA_Raw'], wa_cost),
             calc_metrics("SMS (Vi)", data['SMS_Raw'], sms_cost),
             calc_metrics("Email", data['Email_Raw'], email_cost)
         ]
         st.table(pd.DataFrame(comparison))
 
-        # 6. CIRCLE PENETRATION
-        if view_type != "Circle_Activate_status":
-            st.divider()
-            st.subheader("⭕ Global Circle Context")
-            df_c = load_and_stitch_volume("Circle_Activate_status")
-            if df_c is not None:
-                c_data = df_c.iloc[0] 
-                c1, c2, c3 = st.columns(3)
-                c1.metric("Total Circle Members", f"{c_data['Total_Audience']:,}")
-                c2.metric("Circle Push Reach", f"{c_data['Mobile_Push_Raw']:,}")
-                c3.metric("Circle WA Reach", f"{c_data['WA_Raw']:,}")
+        # 6. CONDITIONAL CIRCLE ANALYSIS (Only shows when Radio is selected)
+        if view_type == "Circle_Activate_status":
+            st.info("💡 You are currently viewing the dedicated Circle Segment analysis. Use the Radio buttons above to switch back to City or Pharma Category views.")
 
         # 7. STRATEGIC VERDICT
         st.divider()
