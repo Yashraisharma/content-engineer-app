@@ -3,6 +3,8 @@ import pandas as pd
 from datetime import datetime
 import requests
 import xml.etree.ElementTree as ET
+import json
+import google.generativeai as genai
 
 # --- 1. LIVE UTILITIES ---
 @st.cache_data(ttl=300)
@@ -17,13 +19,47 @@ def fetch_news(query, count=2):
 @st.cache_data(ttl=300)
 def fetch_live_weather(city):
     try:
-        # Added '&m' to force Metric units (Celsius)
         url = f"https://wttr.in/{city}?format=%t+|+%C+|+Humidity:+%h&m"
         res = requests.get(url, timeout=5)
         return f"🌡️ {res.text.strip()}" if res.status_code == 200 else "🌡️ Live Weather Syncing..."
     except: return "🌡️ Weather Service Offline"
 
-# --- 2. DEMOGRAPHICS & SEGMENTS ---
+# --- 2. THE REAL-TIME AI GENERATOR ---
+def generate_live_ai_xsell(api_key, category, segment_def, weather, city):
+    """Calls Gemini API to generate real-time, logical cross-sells on the fly."""
+    if not api_key:
+        return None # Falls back to pre-set data if no key is provided
+    
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        prompt = f"""
+        You are a clinical retail strategist for Apollo Pharmacy in India.
+        Context:
+        - Target City: {city}
+        - Current Weather: {weather}
+        - Target Category: {category}
+        - User Segment: {segment_def}
+        
+        Generate 5 highly specific, logical cross-sell pairs available at an Indian pharmacy. 
+        If the segment is 'Churn/Winback', focus on heavy discounts/hero items. If 'Power', focus on bulk/subscriptions.
+        Ensure products match the weather (e.g., electrolytes/sunscreen for heat, immunity for monsoon).
+        
+        Respond ONLY with a valid JSON array of arrays in this exact format, with no markdown formatting:
+        [
+            ["Anchor Product Name", "Logical Cross-Sell Product", "Brief 1-sentence strategic reason why this works now"]
+        ]
+        """
+        response = model.generate_content(prompt)
+        # Clean the response to ensure it parses correctly
+        clean_json = response.text.replace("```json", "").replace("```", "").strip()
+        return json.loads(clean_json)
+    except Exception as e:
+        st.error(f"AI Generation Failed: {e}")
+        return None
+
+# --- 3. DEMOGRAPHICS & SEGMENTS ---
 DEMOGRAPHICS = {
     "mumbai": {"seniors": "14.8%", "females": "46.1%", "moms": "12.4%", "tech": "92%"},
     "delhi": {"seniors": "12.2%", "females": "46.5%", "moms": "13.8%", "tech": "91%"},
@@ -39,17 +75,20 @@ SEGMENT_DEFS = {
     "winback": "Old NTU users coming back",
     "active": "Users with 1, 2, or 3 transactions only",
     "power": "Users hitting their 4th transaction",
-    "enhancement": "High-volume users with many transactions",
-    "new registered": "Newly registered users without transaction history",
-    "circle": "Premium Apollo Circle Subscription members"
+    "enhancement": "High-volume users with many transactions"
 }
 
 def run_page():
     now = datetime.now()
     st.set_page_config(layout="wide")
     st.header("🛡️ Strategic Growth Predictor")
+    
+    # --- API KEY INPUT ---
+    st.sidebar.title("🧠 AI Engine")
+    st.sidebar.markdown("Enter a Google Gemini API Key to enable real-time, dynamic cross-sell generation.")
+    api_key = st.sidebar.text_input("Gemini API Key:", type="password")
 
-    # --- 3. DATA LOAD ---
+    # --- DATA LOAD ---
     EXCEL_URL = "https://github.com/Yashraisharma/content-engineer-app/raw/main/cohort_sheets.xlsx.xlsx"
     @st.cache_data
     def get_data():
@@ -76,12 +115,12 @@ def run_page():
         st.info("👋 Select cohorts above to activate live intelligence.")
         return
 
-    # --- 4. ENGINE TABS ---
+    # --- ENGINE TABS ---
     st.divider()
     tabs = st.tabs([p for p in picks])
 
-    def apl_link(display_name, query):
-        url = f"https://www.apollopharmacy.in/search-medicines/{query.replace(' ', '%20')}"
+    def apl_link(display_name):
+        url = f"https://www.apollopharmacy.in/search-medicines/{display_name.replace(' ', '%20')}"
         return f'<a href="{url}" target="_blank" style="color: #1d4ed8; font-weight: 600;">🛒 {display_name}</a>'
 
     for i, primary in enumerate(picks):
@@ -89,9 +128,8 @@ def run_page():
             p_lower = primary.lower()
             city_key = next((c for c in DEMOGRAPHICS.keys() if c in p_lower), "hyderabad")
             dna = DEMOGRAPHICS[city_key]
-            
-            # Segment ID
             seg_key = next((k for k in SEGMENT_DEFS.keys() if k in p_lower), "active")
+            current_seg_def = SEGMENT_DEFS.get(seg_key, 'General Healthcare Cohort')
             
             with st.spinner("Syncing Live Context..."):
                 common_news = fetch_news(f"{city_key} top headlines", 1)[0]
@@ -104,76 +142,45 @@ def run_page():
                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                         <div>
                             <h2 style="margin:0;">🕵️ {primary.upper()}</h2>
-                            <span style="background: #e2e8f0; color: #334155; padding: 4px 12px; border-radius: 15px; font-size: 0.85em; font-weight: 600;">📖 {SEGMENT_DEFS.get(seg_key, 'General Healthcare Cohort')}</span>
+                            <span style="background: #e2e8f0; color: #334155; padding: 4px 12px; border-radius: 15px; font-size: 0.85em; font-weight: 600;">📖 {current_seg_def}</span>
                         </div>
                         <span style="background: #ef4444; color:#fff; padding: 5px 15px; border-radius: 20px; font-weight: bold;">{live_weather} | {city_key.upper()}</span>
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0;">
-                        <div style="background: #fff; padding: 12px; border-radius: 8px; border: 1px solid #ddd;"><b>📰 Common:</b> <a href="{common_news['link']}" target="_blank">{common_news['title']}</a></div>
-                        <div style="background: #fff; padding: 12px; border-radius: 8px; border: 1px solid #ddd;"><b>🏥 Health:</b> <a href="{health_news['link']}" target="_blank">{health_news['title']}</a></div>
-                    </div>
-                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; text-align:center;">
-                        <div style="background:#f1f5f9; padding:10px; border-radius:8px;">👵 Seniors: <b>{dna['seniors']}</b></div>
-                        <div style="background:#f1f5f9; padding:10px; border-radius:8px;">🍼 Moms: <b>{dna['moms']}</b></div>
-                        <div style="background:#f1f5f9; padding:10px; border-radius:8px;">👩 Female: <b>{dna['females']}</b></div>
-                        <div style="background:#f1f5f9; padding:10px; border-radius:8px;">📱 Tech: <b>{dna['tech']}</b></div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
 
-            # --- 5. THE DYNAMIC CROSS-SELL MATRIX ---
-            st.subheader("🛒 Professional Cross-Sell Matrix")
+            # --- LIVE AI GENERATION TRIGGER ---
+            st.subheader("🛒 Real-Time Strategy Matrix")
             
-            # Category-Based Affinity Rules
-            if "mom" in p_lower or "baby" in p_lower:
-                base_data = [
-                    ["Pampers New Baby Taped Diapers", "Apollo Life Wet Wipes", "High-frequency consumption match; 1:1 usage ratio."],
-                    ["Nestle NAN PRO 2", "Morisons Feeding Bottle", "Health safety hook; formula users require sterile gear."],
-                    ["Johnsons Baby Wash", "Sebamed Baby Lotion", "Complete post-bath skin moisture routine."],
-                    ["Himalaya Diaper Rash Cream", "Mamaearth Baby Powder", "Dermatological protection bundle for infants."],
-                    ["Silicone Teether", "Woodwards Gripe Water", "Teething leads to irritability; stomach relief is the logical next buy."]
-                ]
-            elif "cardio" in p_lower or "diab" in p_lower or "diag" in p_lower:
-                base_data = [
-                    ["OneTouch Select Plus", "OneTouch Lancets", "Essential consumables for every blood glucose check."],
-                    ["Omron Blood Pressure", "Accu-Chek Active Kit", "Vital health kit; cardio patients monitor oxygen & pressure."],
-                    ["GNC Fish Oil", "Apollo Life Multivitamin", "Cardiac nutritional foundation; heart-healthy lipid stack."],
-                    ["Diabetic Socks", "Diabetic Foot Care Cream", "Neuropathy prevention; extremity care is high priority."],
-                    ["Protinex Diabetes Care", "Sugar Free Gold", "Dietary conversion bundle for diabetic lifestyle."]
-                ]
-            elif "skin" in p_lower:
-                base_data = [
-                    ["Cetaphil Gentle Cleanser", "Cetaphil SPF 50", "Dermatologist routine; cleansers paired with photo-aging prevention."],
-                    ["Minimalist Salicylic", "Plum Green Tea Toner", "Barrier repair necessity after chemical exfoliation."],
-                    ["Garnier Micellar Water", "Bioderma Sensibio", "Premium upsell transition for urban cosmetic removal."],
-                    ["Pears Body Wash", "Nivea Body Milk", "Bath utility and moisture-lock routine completion."],
-                    ["Aloe Vera Gel", "Apollo Calamine", "Summer heatwave soothing bundle for irritated skin."]
-                ]
-            else: # Urban General
-                base_data = [
-                    ["ORS Orange", "Apollo Sunscreen SPF 50", "Heatwave defense; hydration paired with UV protection."],
-                    ["Seven Seas Cod Liver", "Apollo Vitamin C Zinc", "Immunity anchor for office-going urbanites."],
-                    ["Eno Lemon", "Probiotic Capsules", "Gut health restoration after seasonal acidity spikes."],
-                    ["Dolo 650", "Vicks VapoRub", "Broad viral symptom kit; fever + respiratory relief."],
-                    ["Indulekha Hair Oil", "Tresemme Keratin Shampoo", "Cosmetic treatment bundle for hard-water damage."]
-                ]
+            # Use session state to hold the AI generated data so it doesn't disappear
+            ai_state_key = f"ai_data_{primary}"
+            if ai_state_key not in st.session_state:
+                st.session_state[ai_state_key] = None
 
-            # APPLY SEGMENT OVERRIDES
-            final_rows = []
-            for row in base_data:
-                purchase, push, reason = row
-                if seg_key in ["churn", "winback"]:
-                    reason = f"Reactivation Offer: {reason} + 25% Off Coupon."
-                elif seg_key == "power":
-                    reason = f"Loyalty Reward: {reason} | Auto-refill recommended."
-                
-                final_rows.append([apl_link(purchase, purchase), apl_link(push, push), reason])
+            c1, c2 = st.columns([1, 4])
+            with c1:
+                if st.button("🧠 Generate Live AI Strategy", key=f"btn_{primary}"):
+                    if not api_key:
+                        st.warning("⚠️ Please enter an API key in the sidebar to generate live strategies.")
+                    else:
+                        with st.spinner("AI is analyzing weather, city, and segment..."):
+                            st.session_state[ai_state_key] = generate_live_ai_xsell(api_key, primary, current_seg_def, live_weather, city_key)
 
-            df_xsell = pd.DataFrame(final_rows, columns=["User Purchase", "Push (Linked)", "Reasoning"])
-            st.markdown(df_xsell.to_html(escape=False, index=False), unsafe_allow_html=True)
+            # --- RENDER THE TABLE ---
+            active_data = st.session_state[ai_state_key]
+            
+            if active_data:
+                # If AI successfully generated data, format it with links
+                final_rows = [[apl_link(row[0]), apl_link(row[1]), row[2]] for row in active_data]
+                df_xsell = pd.DataFrame(final_rows, columns=["User Purchase", "Push (Linked)", "Live AI Reasoning"])
+                st.success("✅ AI Strategy Generated Successfully based on current context.")
+                st.markdown(df_xsell.to_html(escape=False, index=False), unsafe_allow_html=True)
+            else:
+                st.info("👆 Click 'Generate Live AI Strategy' to ping the LLM and create 5 unique combinations for this segment right now.")
+
             st.write("")
 
-    # --- 6. AGGREGATED ROI FORECAST ---
+    # --- AGGREGATED ROI FORECAST ---
     st.divider()
     stats = df_master[df_master['Name'].isin(picks)].sum(numeric_only=True)
     st.subheader("🧬 Aggregated Reach & ROI")
