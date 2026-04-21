@@ -8,7 +8,7 @@ import google.generativeai as genai
 import re
 from io import BytesIO
 
-# --- 1. CORE UTILITIES: NEWS, WEATHER, AI ---
+# --- 1. CORE UTILITIES ---
 
 @st.cache_data(ttl=300)
 def fetch_news(query):
@@ -43,26 +43,46 @@ def fetch_live_weather(city_key, fallback):
     return fallback
 
 def generate_live_ai_xsell(sheet, name, segment, weather, city, api_key):
+    """
+    Enhanced AI Engine with better error reporting and prompt engineering.
+    """
     try:
+        if not api_key:
+            return [["Error", "Missing API Key", "Please add GEMINI_API_KEY to your Streamlit Secrets."]]
+            
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-3-flash')
+        # Using 1.5-flash for maximum SDK compatibility; change to gemini-3-flash if supported in your environment
+        model = genai.GenerativeModel('gemini-1.5-flash') 
+        
         prompt = f"""
-        Role: Senior Growth Strategist for Apollo Pharmacy India.
-        Context: City: {city} | Weather: {weather} | Source: {sheet} | Product: {name} | Segment: {segment}.
+        Role: Senior Clinical Retail Strategist for Apollo Pharmacy India.
+        Task: Suggest 5 logical FMCG/Wellness cross-sell items for a user buying: {name} ({sheet}).
         
-        STRICT CROSS-SELL DIRECTIVE:
-        1. NO Rx/Hardcore medicines.
-        2. PRIORITIZE: Hygiene, Skin Barrier Repair, Moisture Management (Anti-fungal towels/socks), Baby Care (Diapers/Wipes), Health Devices (BP/Steamers), and Clinical Nutrition.
-        3. Aim for high-margin FMCG/Wellness drivers.
+        CONTEXT:
+        - Location: {city}
+        - Weather: {weather}
+        - Strategy: Focus on Moisture management, Hygiene, Skin Barrier repair, Devices, and Clinical Nutrition.
+        - Constraint: NEVER suggest Rx drugs. Suggest lotions, soaps, wipes, vitamins, or gadgets.
         
-        Output: JSON array of arrays ONLY: [["Anchor", "Cross-Sell", "Business Logic"]]
+        Output format: Respond ONLY with a valid JSON array of arrays.
+        Example: [["Anchor", "Cross-sell", "Reason"]]
         """
+        
         response = model.generate_content(prompt)
-        match = re.search(r'\[\s*\[.*\]\s*\]', response.text, re.DOTALL)
-        return json.loads(match.group()) if match else None
-    except: return None
+        
+        # Robust JSON extraction
+        res_text = response.text
+        json_match = re.search(r'\[\s*\[.*\]\s*\]', res_text, re.DOTALL)
+        
+        if json_match:
+            return json.loads(json_match.group())
+        else:
+            return [["Parsing Error", "Format Mismatch", "The AI returned text instead of a table. Please refresh."]]
+            
+    except Exception as e:
+        return [["System Error", "API Failure", f"Technical Details: {str(e)}"]]
 
-# --- 2. CONFIGURATION & THEMES ---
+# --- 2. CONFIG & THEME ---
 
 DEMOGRAPHICS = {
     "mumbai": {"seniors": "14.8%", "females": "46.1%", "moms": "12.4%", "tech": "92%", "fallback": "31°C | Mist"},
@@ -77,40 +97,41 @@ def apply_theme(mode):
     if mode == "Midnight (Dark)":
         bg, text, card, link = "#0f172a", "#f1f5f9", "#1e293b", "#60a5fa"
     else:
-        bg, text, card, link = "#ffffff", "#1e293b", "#f8fafc", "#2563eb"
+        bg, text, card, link = "#fcfcfc", "#1e293b", "#ffffff", "#2563eb"
     
     css = f"""
     <style>
         .stApp {{ background-color: {bg}; }}
         h1, h2, h3, h4, p, span, label, div {{ color: {text} !important; }}
-        [data-testid="stMetricLabel"] {{ color: {text} !important; font-weight: 600; opacity: 0.9; }}
+        [data-testid="stMetricLabel"] {{ color: {text} !important; font-weight: 600; opacity: 0.8; }}
         [data-testid="stMetricValue"] {{ color: {text} !important; font-weight: 800; }}
         div[data-testid="stMetric"] {{ background-color: {card}; border: 1px solid {link}33; padding: 15px; border-radius: 12px; }}
         .news-box {{ background-color: {card}; border-left: 5px solid {link}; padding: 12px; border-radius: 6px; margin-bottom: 10px; }}
         a {{ color: {link} !important; font-weight: 700; text-decoration: none; }}
         .roi-panel {{ background-color: {card}; padding: 25px; border-radius: 15px; border: 1px solid {link}; }}
-        table {{ color: {text} !important; background-color: {card}; }}
+        table {{ color: {text} !important; background-color: {card}; border-collapse: collapse; width: 100%; }}
+        td, th {{ border: 1px solid {link}33; padding: 10px; text-align: left; }}
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
 
-# --- 3. THE DASHBOARD ENGINE ---
+# --- 3. DASHBOARD ENGINE ---
 
 def run_page():
-    st.set_page_config(page_title="Growth Strategist", layout="wide")
+    st.set_page_config(page_title="Apollo Growth Strategist", layout="wide")
     
     with st.sidebar:
         st.image("https://www.apollopharmacy.in/static/images/logo.svg", width=150)
-        theme = st.radio("Theme:", ["Professional (Light)", "Midnight (Dark)"])
+        theme = st.radio("Theme Context:", ["Professional (Light)", "Midnight (Dark)"])
         st.divider()
-        st.caption("Clinical FMCG & Wellness Synthesis")
+        st.caption("FMCG • Devices • Wellness Synthesis")
 
     apply_theme(theme)
     now = datetime.now()
     st.title("🛡️ Strategic Growth Predictor")
     st.markdown(f"**Enterprise Pulse:** {now.strftime('%A, %d %B | %I:%M %p')}")
 
-    # --- DATA PARSER: ACTUAL SHEET LOGIC ---
+    # --- DATA PARSER ---
     EXCEL_URL = "https://github.com/Yashraisharma/content-engineer-app/raw/main/cohort_sheets.xlsx.xlsx"
     
     @st.cache_data
@@ -142,7 +163,7 @@ def run_page():
 
     data = get_data()
 
-    # --- BUCKETING: SHEET-DRIVEN & REGEX-CITY ---
+    # --- BUCKETING (HYD/BLR REGEX) ---
     city_rows, focus_rows, daily_rows, circle_rows, sku_rows = [], [], [], [], []
     city_regex = re.compile(r'\b(hyd|hyderabad|blr|bangalore|banglore|del|delhi|mum|mumbai|chn|chennai|kol|kolkata|ncr)\b', re.I)
 
@@ -175,7 +196,7 @@ def run_page():
         for x in p5: sel.append(next(r for r in sku_rows if r['UI_Name'] == x))
 
     if not sel:
-        st.info("👋 Select cohorts above to launch Growth Analysis."); return
+        st.info("👋 Select cohorts above to launch AI analysis."); return
 
     # --- TABS ---
     st.divider()
@@ -190,33 +211,34 @@ def run_page():
             dna = DEMOGRAPHICS[city_key]
             weather = fetch_live_weather(city_key, dna['fallback'])
 
-            # News & Context
+            # News
             n1, n2 = st.columns(2)
             n1.markdown(f'<div class="news-box"><b>🌐 Local News:</b> {fetch_news(city_key)["title"]}</div>', unsafe_allow_html=True)
             n2.markdown(f'<div class="news-box"><b>🏥 Pulse:</b> {fetch_news(cohort["AI_Name"])["title"]}</div>', unsafe_allow_html=True)
 
             # Metrics
-            st.markdown(f"#### 🧬 {city_key.upper()} Snapshot | {weather}")
+            st.markdown(f"#### 🧬 {city_key.upper()} Context | {weather}")
             dc1, dc2, dc3, dc4 = st.columns(4)
             dc1.metric("👵 Seniors", dna['seniors'])
             dc2.metric("🍼 Moms", dna['moms'])
             dc3.metric("👩 Female", dna['females'])
             dc4.metric("📱 Tech Savvy", dna['tech'])
 
-            # AI Cross-Sell Table
+            # AI Cross-Sell Synthesis
             st.divider()
-            state_key = f"ai_final_{cohort['UI_Name']}"
+            st.subheader("🛒 Strategic Cross-Sell Synthesis (FMCG / Wellness)")
+            
+            state_key = f"ai_gen_{cohort['UI_Name']}"
             if state_key not in st.session_state or st.session_state[state_key] is None:
-                with st.spinner("AI Synthesizing FMCG & Wellness Pairs..."):
+                with st.spinner("AI Brainstorming clinical wellness pairings..."):
                     st.session_state[state_key] = generate_live_ai_xsell(cohort['Sheet_Key'], cohort['AI_Name'], "Active", weather, city_key, st.secrets["GEMINI_API_KEY"])
 
-            st.subheader("🛒 Strategic Cross-Sell Synthesis")
             if st.session_state[state_key]:
                 def apl(v): return f'<a href="https://www.apollopharmacy.in/search-medicines/{v.replace(" ","%20")}" target="_blank">🛒 {v}</a>'
                 formatted = [[apl(r[0]), apl(r[1]), r[2]] for r in st.session_state[state_key]]
                 df_out = pd.DataFrame(formatted, columns=["Anchor", "Strategic Cross-Sell", "Growth Logic"])
                 st.markdown(df_out.to_html(escape=False, index=False), unsafe_allow_html=True)
-                st.button("🔄 Regenerate", key=f"re_{i}")
+                st.button("🔄 Refresh Analysis", key=f"re_{i}")
 
     # --- ROI PANEL ---
     st.markdown('<div class="roi-panel">', unsafe_allow_html=True)
