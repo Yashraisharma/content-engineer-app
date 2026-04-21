@@ -59,7 +59,7 @@ def generate_live_ai_xsell(sheet, name, segment, weather, city, api_key):
         return json.loads(clean)
     except: return None
 
-# --- 2. CONFIG & CUSTOM CSS (BLACK TEXT OVERRIDE) ---
+# --- 2. CONFIG & EYE-COMFORT CSS ---
 
 DEMOGRAPHICS = {
     "mumbai": {"seniors": "14.8%", "females": "46.1%", "moms": "12.4%", "tech": "92%", "fallback": "31°C | Mist"},
@@ -79,56 +79,72 @@ SEGMENT_DEFS = {
     "enhancement": "Premium high-volume users"
 }
 
-# Forced Black Text Styling
+# CSS Optimized for Readability & Eye Comfort
 CSS = """
 <style>
-    .main { background-color: #ffffff; }
+    /* Paper-Soft Background */
+    .main { background-color: #fcfcfc; }
     
-    /* Force ALL dashboard text to solid black for high contrast */
-    [data-testid="stHeader"], [data-testid="stMarkdownContainer"], 
-    [data-testid="stMetricLabel"], [data-testid="stMetricValue"],
-    [data-testid="stSubheader"], .stTabs [data-baseweb="tab"] {
-        color: #000000 !important;
-        opacity: 1.0 !important;
+    /* Soft Black Text for Readability without Vibration */
+    html, body, [class*="css"], [data-testid="stMarkdownContainer"] p {
+        color: #1a1a1a !important;
     }
 
-    [data-testid="stMetricLabel"] { font-weight: 700 !important; font-size: 1.1rem !important; }
-    [data-testid="stMetricValue"] { font-weight: 800 !important; }
+    [data-testid="stMetricLabel"] { 
+        color: #334155 !important; 
+        font-weight: 600 !important; 
+        font-size: 1.0rem !important; 
+    }
+    [data-testid="stMetricValue"] { 
+        color: #0f172a !important; 
+        font-weight: 700 !important; 
+    }
 
-    /* Custom Metric Container styling */
+    /* Subtle Card Design */
     .stMetric { 
-        background-color: #f1f5f9; 
-        padding: 20px; 
-        border-radius: 12px; 
-        border: 1px solid #cbd5e1;
+        background-color: #ffffff; 
+        padding: 18px; 
+        border-radius: 8px; 
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
     }
     
-    .news-card { padding: 20px; border-radius: 12px; margin-bottom: 10px; border-left: 5px solid; }
-    .common-news { background-color: #f0f7ff; border-left-color: #2563eb; color: #000000 !important; }
-    .health-news { background-color: #f0fdf4; border-left-color: #16a34a; color: #000000 !important; }
+    .news-card { padding: 15px; border-radius: 10px; margin-bottom: 12px; border: 1px solid #e2e8f0; }
+    .common-news { background-color: #f8fafc; border-left: 4px solid #3b82f6; }
+    .health-news { background-color: #f8fafc; border-left: 4px solid #10b981; }
     
-    /* Table Styling */
-    table { color: #000000 !important; width: 100%; border: 1px solid #e2e8f0; }
-    th { background-color: #f8fafc; color: #000000 !important; font-weight: 700; }
+    /* Table: High Contrast but Clean */
+    table { background-color: #ffffff; color: #1a1a1a !important; width: 100%; border: 1px solid #e2e8f0; }
+    th { background-color: #f1f5f9; color: #0f172a !important; font-weight: 700; border: 1px solid #e2e8f0; }
+    td { border: 1px solid #f1f5f9; padding: 10px; }
     
-    /* Ensure Links stay visible but high contrast blue */
-    a { color: #1d4ed8 !important; text-decoration: underline !important; font-weight: 600; }
+    /* High Visibility Links */
+    a { color: #2563eb !important; text-decoration: none !important; font-weight: 600; }
+    a:hover { text-decoration: underline !important; }
     
-    .roi-section { background-color: #ffffff; padding: 25px; border-radius: 15px; border: 2px solid #000000; margin-top: 30px; }
+    .roi-section { 
+        background-color: #ffffff; 
+        padding: 25px; 
+        border-radius: 12px; 
+        border: 1px solid #d1d5db; 
+        margin-top: 30px; 
+    }
+    
+    h1, h2, h3 { color: #0f172a !important; font-weight: 700 !important; }
 </style>
 """
 
 # --- 3. DASHBOARD ENGINE ---
 
 def run_page():
-    st.set_page_config(page_title="Strategic Growth Predictor", layout="wide")
+    st.set_page_config(page_title="Growth Strategist Dashboard", layout="wide")
     st.markdown(CSS, unsafe_allow_html=True)
     
     now = datetime.now()
     t1, t2 = st.columns([3, 1])
     with t1:
         st.title("🛡️ Strategic Growth Predictor")
-        st.markdown(f"**Live Dashboard Status:** Active Sync @ {now.strftime('%I:%M %p')}")
+        st.markdown(f"**Dashboard Status:** Synced @ {now.strftime('%I:%M %p')}")
     with t2:
         st.image("https://www.apollopharmacy.in/static/images/logo.svg", width=180)
 
@@ -179,11 +195,11 @@ def run_page():
 
     # --- SELECTION MATRIX ---
     with st.container():
-        st.markdown("### 📂 Segment Selector")
+        st.markdown("### 📂 Selection Hub")
         c1, c2, c3, c4, c5 = st.columns(5)
         sel = []
         with c1:
-            p1 = st.multiselect("🏙️ City", options=[r['UI_Name'] for r in city_rows])
+            p1 = st.multiselect("🏙️ Cities", options=[r['UI_Name'] for r in city_rows])
             for x in p1: sel.append(next(r for r in city_rows if r['UI_Name'] == x))
         with c2:
             p2 = st.multiselect("🎯 Focus", options=[r['UI_Name'] for r in focus_rows])
@@ -199,12 +215,12 @@ def run_page():
             for x in p5: sel.append(next(r for r in sku_rows if r['UI_Name'] == x))
 
     if not sel:
-        st.info("👋 Select cohorts above to launch Growth Analysis.")
+        st.info("👋 Select cohorts above to launch analysis.")
         return
 
     # --- TABS ---
     st.divider()
-    tabs = st.tabs([f"📊 {c['AI_Name'][:18]}" for c in sel])
+    tabs = st.tabs([f"📄 {c['AI_Name'][:18]}" for c in sel])
 
     for i, cohort in enumerate(sel):
         with tabs[i]:
@@ -217,39 +233,39 @@ def run_page():
             weather = fetch_live_weather(city_key, dna['fallback'])
             seg_def = next((v for k,v in SEGMENT_DEFS.items() if k in cohort['UI_Name'].lower()), "General Pharma Cohort")
 
-            # News Cards
+            # News Flow
             n1, n2 = st.columns(2)
-            common = fetch_news(f"{city_key} public health")
-            health = fetch_news(f"{cohort['AI_Name']} health trends")
+            common = fetch_news(f"{city_key} local news")
+            health = fetch_news(f"{cohort['AI_Name']} wellness trends India")
             n1.markdown(f'<div class="news-card common-news"><b>🌐 Region Trends:</b><br><a href="{common["link"]}" target="_blank">{common["title"]}</a></div>', unsafe_allow_html=True)
             n2.markdown(f'<div class="news-card health-news"><b>🏥 Health Pulse:</b><br><a href="{health["link"]}" target="_blank">{health["title"]}</a></div>', unsafe_allow_html=True)
 
-            # Metrics (Now forced Black Text)
-            st.markdown(f"#### 🧬 {city_key.upper()} Context | {weather}")
+            # Metrics
+            st.markdown(f"#### 🧬 {city_key.upper()} Snapshot | {weather}")
             dc1, dc2, dc3, dc4 = st.columns(4)
             dc1.metric("👵 Seniors", dna['seniors'])
             dc2.metric("🍼 Moms", dna['moms'])
             dc3.metric("👩 Female", dna['females'])
             dc4.metric("📱 Tech Savvy", dna['tech'])
 
-            # AI Strategy Table
+            # Strategy Matrix
             st.divider()
             state_key = f"ai_st_{cohort['UI_Name']}"
             if state_key not in st.session_state or st.session_state[state_key] is None:
-                with st.spinner("Analyzing high-margin FMCG pairs..."):
+                with st.spinner("Analyzing FMCG pairings..."):
                     st.session_state[state_key] = generate_live_ai_xsell(cohort['Sheet_Key'], cohort['AI_Name'], seg_def, weather, city_key, st.secrets["GEMINI_API_KEY"])
 
-            st.subheader("🛒 Real-Time AI Strategy Matrix (FMCG Focus)")
+            st.subheader("🛒 Contextual AI Strategy (FMCG Focus)")
             if st.session_state[state_key]:
                 def apl(v): return f'<a href="https://www.apollopharmacy.in/search-medicines/{v.replace(" ","%20")}" target="_blank">🛒 {v}</a>'
                 formatted = [[apl(r[0]), apl(r[1]), r[2]] for r in st.session_state[state_key]]
-                df_out = pd.DataFrame(formatted, columns=["Anchor Product", "Cross-Sell (FMCG/Wellness)", "Strategic Reasoning"])
+                df_out = pd.DataFrame(formatted, columns=["Anchor Product", "Cross-Sell (FMCG)", "Strategic Reasoning"])
                 st.markdown(df_out.to_html(escape=False, index=False), unsafe_allow_html=True)
-                st.button("🔄 Regenerate Strategy", key=f"re_{i}")
+                st.button("🔄 Refresh Data", key=f"re_{i}")
 
     # --- ROI SECTION ---
     st.markdown('<div class="roi-section">', unsafe_allow_html=True)
-    st.subheader("🧬 Aggregated Reach & ROI Forecast")
+    st.subheader("🧬 Aggregated ROI Forecast")
     t_base, t_wa, t_push, t_sms, t_email = sum(c['Total'] for c in sel), sum(c['WA'] for c in sel), sum(c['Push'] for c in sel), sum(c['SMS'] for c in sel), sum(c['Email'] for c in sel)
     
     m1, m2, m3, m4, m5 = st.columns(5)
@@ -259,11 +275,11 @@ def run_page():
     m4.metric("SMS", f"{t_sms:,}")
     m5.metric("Email", f"{t_email:,}")
 
-    st.markdown("#### ⚙️ Campaign Parameters")
+    st.markdown("#### ⚙️ Parameters")
     cv1, cv2, cv3, cv4, cv5 = st.columns(5)
-    wa_r = cv1.number_input("WA Cost (₹)", 0.78)
-    sms_r = cv2.number_input("SMS Cost (₹)", 0.13)
-    em_r = cv3.number_input("Email Cost (₹)", 0.03)
+    wa_r = cv1.number_input("WA Cost", 0.78)
+    sms_r = cv2.number_input("SMS Cost", 0.13)
+    em_r = cv3.number_input("Email Cost", 0.03)
     conv = cv4.slider("Conv Rate (%)", 0.1, 5.0, 1.0)
     aov = cv5.number_input("AOV (₹)", 800)
 
