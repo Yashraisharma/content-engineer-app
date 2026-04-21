@@ -59,7 +59,7 @@ def generate_live_ai_xsell(sheet, name, segment, weather, city, api_key):
         return json.loads(clean)
     except: return None
 
-# --- 2. CONFIG & STYLING ---
+# --- 2. CONFIG & CUSTOM CSS (BLACK TEXT OVERRIDE) ---
 
 DEMOGRAPHICS = {
     "mumbai": {"seniors": "14.8%", "females": "46.1%", "moms": "12.4%", "tech": "92%", "fallback": "31°C | Mist"},
@@ -79,16 +79,42 @@ SEGMENT_DEFS = {
     "enhancement": "Premium high-volume users"
 }
 
+# Forced Black Text Styling
 CSS = """
 <style>
-    .main { background-color: #f8fafc; }
-    .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .main { background-color: #ffffff; }
+    
+    /* Force ALL dashboard text to solid black for high contrast */
+    [data-testid="stHeader"], [data-testid="stMarkdownContainer"], 
+    [data-testid="stMetricLabel"], [data-testid="stMetricValue"],
+    [data-testid="stSubheader"], .stTabs [data-baseweb="tab"] {
+        color: #000000 !important;
+        opacity: 1.0 !important;
+    }
+
+    [data-testid="stMetricLabel"] { font-weight: 700 !important; font-size: 1.1rem !important; }
+    [data-testid="stMetricValue"] { font-weight: 800 !important; }
+
+    /* Custom Metric Container styling */
+    .stMetric { 
+        background-color: #f1f5f9; 
+        padding: 20px; 
+        border-radius: 12px; 
+        border: 1px solid #cbd5e1;
+    }
+    
     .news-card { padding: 20px; border-radius: 12px; margin-bottom: 10px; border-left: 5px solid; }
-    .common-news { background-color: #eff6ff; border-left-color: #3b82f6; }
-    .health-news { background-color: #f0fdf4; border-left-color: #22c55e; }
-    .strategy-table { border-collapse: collapse; margin: 25px 0; font-size: 0.9em; min-width: 400px; border-radius: 5px 5px 0 0; overflow: hidden; box-shadow: 0 0 20px rgba(0, 0, 0, 0.15); }
-    .roi-section { background-color: #ffffff; padding: 25px; border-radius: 15px; border: 1px solid #e2e8f0; margin-top: 30px; }
-    h3 { color: #1e293b; font-weight: 700; }
+    .common-news { background-color: #f0f7ff; border-left-color: #2563eb; color: #000000 !important; }
+    .health-news { background-color: #f0fdf4; border-left-color: #16a34a; color: #000000 !important; }
+    
+    /* Table Styling */
+    table { color: #000000 !important; width: 100%; border: 1px solid #e2e8f0; }
+    th { background-color: #f8fafc; color: #000000 !important; font-weight: 700; }
+    
+    /* Ensure Links stay visible but high contrast blue */
+    a { color: #1d4ed8 !important; text-decoration: underline !important; font-weight: 600; }
+    
+    .roi-section { background-color: #ffffff; padding: 25px; border-radius: 15px; border: 2px solid #000000; margin-top: 30px; }
 </style>
 """
 
@@ -139,7 +165,7 @@ def run_page():
 
     all_data = get_data()
 
-    # --- BUCKETING ---
+    # --- BUCKETING (HYDERABAD/BANGLORE FIXED) ---
     city_rows, focus_rows, daily_rows, circle_rows, sku_rows = [], [], [], [], []
     city_regex = re.compile(r'(^|[\s\-_])(hyd|hyderabad|blr|bangalore|banglore|del|delhi|mum|mumbai|chn|chennai|kol|kolkata|ncr|bengaluru)([\s\-_]|$)', re.I)
 
@@ -193,12 +219,12 @@ def run_page():
 
             # News Cards
             n1, n2 = st.columns(2)
-            common = fetch_news(f"{city_key} health trends")
-            health = fetch_news(f"{cohort['AI_Name']} pharmacy")
+            common = fetch_news(f"{city_key} public health")
+            health = fetch_news(f"{cohort['AI_Name']} health trends")
             n1.markdown(f'<div class="news-card common-news"><b>🌐 Region Trends:</b><br><a href="{common["link"]}" target="_blank">{common["title"]}</a></div>', unsafe_allow_html=True)
             n2.markdown(f'<div class="news-card health-news"><b>🏥 Health Pulse:</b><br><a href="{health["link"]}" target="_blank">{health["title"]}</a></div>', unsafe_allow_html=True)
 
-            # Metrics
+            # Metrics (Now forced Black Text)
             st.markdown(f"#### 🧬 {city_key.upper()} Context | {weather}")
             dc1, dc2, dc3, dc4 = st.columns(4)
             dc1.metric("👵 Seniors", dna['seniors'])
@@ -206,7 +232,7 @@ def run_page():
             dc3.metric("👩 Female", dna['females'])
             dc4.metric("📱 Tech Savvy", dna['tech'])
 
-            # AI Table
+            # AI Strategy Table
             st.divider()
             state_key = f"ai_st_{cohort['UI_Name']}"
             if state_key not in st.session_state or st.session_state[state_key] is None:
@@ -215,7 +241,7 @@ def run_page():
 
             st.subheader("🛒 Real-Time AI Strategy Matrix (FMCG Focus)")
             if st.session_state[state_key]:
-                def apl(v): return f'<a href="https://www.apollopharmacy.in/search-medicines/{v.replace(" ","%20")}" target="_blank" style="color:#2563eb;text-decoration:none;font-weight:600;">🛒 {v}</a>'
+                def apl(v): return f'<a href="https://www.apollopharmacy.in/search-medicines/{v.replace(" ","%20")}" target="_blank">🛒 {v}</a>'
                 formatted = [[apl(r[0]), apl(r[1]), r[2]] for r in st.session_state[state_key]]
                 df_out = pd.DataFrame(formatted, columns=["Anchor Product", "Cross-Sell (FMCG/Wellness)", "Strategic Reasoning"])
                 st.markdown(df_out.to_html(escape=False, index=False), unsafe_allow_html=True)
