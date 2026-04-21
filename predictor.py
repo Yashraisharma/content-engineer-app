@@ -19,6 +19,7 @@ def fetch_news(query, count=1):
     except: pass
     return {"title": "News Feed Offline", "link": "#"}
 
+@st.cache_data(ttl=60)
 def fetch_live_weather(city_key, fallback_string):
     """Fetches highly accurate, real-time weather using Open-Meteo API locked to IST."""
     coords = {
@@ -57,20 +58,17 @@ def fetch_live_weather(city_key, fallback_string):
         return fallback_string
 
 # --- 2. THE REAL-TIME AI GENERATOR (GEMINI 3 FLASH) ---
-def generate_live_ai_xsell(category, segment_def, weather, city):
+def generate_live_ai_xsell(category, segment_def, weather, city, api_key):
     try:
-        # Pulls your API key securely from .streamlit/secrets.toml
-        api_key = st.secrets["GEMINI_API_KEY"]
         genai.configure(api_key=api_key)
-        
-        # Explicitly targeting Gemini 3 Flash Preview
         model = genai.GenerativeModel('gemini-3-flash-preview')
         prompt = f"""
         You are a clinical retail strategist for Apollo Pharmacy in India.
         Context: Target City: {city} | Current Weather: {weather} | Category: {category} | Segment: {segment_def}
         
         Generate 5 specific, logical cross-sell product pairs available at an Indian pharmacy. 
-        Focus heavily on the weather and the segment definition.
+        Focus heavily on the weather and the segment definition. 
+        Provide UNIQUE combinations not given previously.
         Respond ONLY with a valid JSON array of arrays:
         [["Anchor Product Name", "Logical Cross-Sell Product", "Brief 1-sentence strategic reason"]]
         """
@@ -126,7 +124,12 @@ def run_page():
     if "selected_segments" not in st.session_state: st.session_state.selected_segments = []
     def sync_picks(): st.session_state.selected_segments = st.session_state.ms_key
 
-    picks = st.multiselect("🔍 Select Target Cohorts:", options=df_master['Name'].unique().tolist() if not df_master.empty else [], default=st.session_state.selected_segments, key="ms_key", on_change=sync_picks)
+    # --- TOP CONTROLS ---
+    c1, c2 = st.columns([1, 3])
+    with c1:
+        global_city = st.selectbox("🌍 Base City Context", [k.title() for k in DEMOGRAPHICS.keys()], index=3).lower()
+    with c2:
+        picks = st.multiselect("🔍 Select Target Cohorts:", options=df_master['Name'].unique().tolist() if not df_master.empty else [], default=st.session_state.selected_segments, key="ms_key", on_change=sync_picks)
 
     if not picks:
         st.info("👋 Select cohorts above to activate live intelligence.")
@@ -143,12 +146,12 @@ def run_page():
     for i, primary in enumerate(picks):
         with tabs[i]:
             p_lower = primary.lower()
-            city_key = next((c for c in DEMOGRAPHICS.keys() if c in p_lower), "hyderabad")
+            city_key = next((c for c in DEMOGRAPHICS.keys() if c in p_lower), global_city)
             dna = DEMOGRAPHICS[city_key]
             seg_key = next((k for k in SEGMENT_DEFS.keys() if k in p_lower), "active")
             current_seg_def = SEGMENT_DEFS.get(seg_key, 'General Healthcare Cohort')
             
-            with st.spinner("Syncing Live Context & Weather..."):
+            with st.spinner(f"Syncing Live Context for {city_key.title()}..."):
                 common_news = fetch_news(f"{city_key} top headlines")
                 health_news = fetch_news(f"{primary} healthcare trends India")
                 live_weather = fetch_live_weather(city_key, dna["fallback"])
@@ -163,42 +166,45 @@ def run_page():
             nc1.info(f"**📰 Common News:** [{common_news['title']}]({common_news['link']})")
             nc2.success(f"**🏥 Health News:** [{health_news['title']}]({health_news['link']})")
             
-            # Demographics Block
-            st.write("#### 🧬 Cohort Demographics")
-            dc1, dc2, dc3, dc4 = st.columns(4)
-            dc1.metric("👵 Seniors", dna['seniors'])
-            dc2.metric("🍼 Moms", dna['moms'])
-            dc3.metric("👩 Female", dna['females'])
-            dc4.metric("📱 Tech Savvy", dna['tech'])
-            
             st.divider()
 
-            # --- LIVE AI GENERATION TRIGGER ---
+            # --- AUTONOMOUS AI GENERATION LOGIC ---
             st.subheader("🛒 Real-Time AI Strategy Matrix")
             
             ai_state_key = f"ai_data_{primary}"
-            if ai_state_key not in st.session_state:
-                st.session_state[ai_state_key] = None
+            
+            # Fetch API Key securely
+            try:
+                active_key = st.secrets["GEMINI_API_KEY"]
+            except Exception:
+                active_key = None
 
-            if st.button("🧠 Generate Live Strategy", key=f"btn_{primary}"):
-                # Security Check before firing AI
-                if "GEMINI_API_KEY" not in st.secrets:
-                    st.error("⚠️ Missing API Key! Please ensure you have a .streamlit/secrets.toml file with GEMINI_API_KEY set.")
+            # 1. AUTO-RUN ON SELECTION (If no data exists yet for this tab)
+            if ai_state_key not in st.session_state or st.session_state[ai_state_key] is None:
+                if not active_key:
+                    st.error("⚠️ Missing API Key! Check .streamlit/secrets.toml.")
                 else:
-                    with st.spinner("AI is analyzing weather, city, and segment..."):
-                        ai_response = generate_live_ai_xsell(primary, current_seg_def, live_weather, city_key)
-                        if ai_response:
-                            st.session_state[ai_state_key] = ai_response
+                    with st.spinner(f"🧠 Auto-generating initial strategy for {primary}..."):
+                        st.session_state[ai_state_key] = generate_live_ai_xsell(primary, current_seg_def, live_weather, city_key, active_key)
 
-            # RENDER THE TABLE
-            active_data = st.session_state[ai_state_key]
+            # 2. THE REFRESH BUTTON (Placed BEFORE table rendering so it updates instantly)
+            c_btn1, c_btn2 = st.columns([1, 4])
+            with c_btn1:
+                if st.button("🔄 Refresh (Get 5 New Options)", key=f"btn_{primary}"):
+                    if active_key:
+                        with st.spinner("🧠 Brainstorming new product associations..."):
+                            # Overwrites the old data with a fresh API call
+                            st.session_state[ai_state_key] = generate_live_ai_xsell(primary, current_seg_def, live_weather, city_key, active_key)
+
+            # 3. RENDER THE TABLE
+            active_data = st.session_state.get(ai_state_key)
             if active_data:
                 final_rows = [[apl_link(row[0]), apl_link(row[1]), row[2]] for row in active_data]
                 df_xsell = pd.DataFrame(final_rows, columns=["User Purchase", "Push (Linked)", "Live AI Reasoning"])
-                st.success("✅ AI Strategy Generated Successfully based on current context.")
+                st.success("✅ AI Strategy Ready.")
                 st.markdown(df_xsell.to_html(escape=False, index=False), unsafe_allow_html=True)
             else:
-                st.info("👆 Click 'Generate Live Strategy' to ping the AI and create 5 unique combinations for this segment right now.")
+                st.info("No strategy generated. Click refresh to try again.")
 
             st.write("")
 
@@ -234,8 +240,6 @@ def run_page():
         calc("Email", stats.get('Email', 0), email_rate)
     ]))
 
-# If running directly (not imported as a module), execute the page.
 if __name__ == "__main__":
-    # If the page config is already set in a parent wrapper, you might want to comment this out
     st.set_page_config(page_title="Strategic Growth Predictor", layout="wide")
     run_page()
