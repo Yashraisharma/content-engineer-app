@@ -1,12 +1,20 @@
-You are building a highly sophisticated, multi-dimensional targeting matrix. To stop relying on hardcoded estimates and give you a true "Command Center," we must move away from static text and integrate an actual live feed.
+Ah, the classic "smart quote" trap! This error has nothing to do with the logic of your app—it is a strict Python formatting rule.
 
-To achieve this without forcing you to pay for a third-party API key right now, I have integrated **Python’s `requests` and XML parser** to directly tap into the **Google News RSS Feed**. This ensures that whenever you run the app, it pulls the literal, real-time headlines from Google for the specific city and category you select.
+The error `invalid character '’' (U+2019)` means that somewhere in your file (likely near line 3), there is a **curly/smart quote** (`’` or `‘`) instead of a standard **straight programming quote** (`'` or `"`). 
 
-I have also updated the **Affinity Engine** to read your exact matrix: **City + Category + Segment (Churn/Active/NTU) + Circle Status**.
+Python strictly requires straight quotes for strings. 
 
-### 🛠️ The Live API Edition: `predictor.py`
+### 🕵️‍♂️ Why did this happen?
+This almost always happens if you copy-pasted the code into a "Rich Text" editor (like Mac TextEdit, Apple Notes, or Microsoft Word) before saving it as a `.py` file. Those programs try to be helpful by automatically converting straight quotes into curly ones, which instantly breaks Python code.
 
-This code will handle multiple selections, fetch live news directly from Google, and alter the product push based on user behavior (e.g., giving a "Winback" offer to Churn users).
+### 🛠️ How to Fix It Right Now:
+1. Open your `predictor.py` file in a **pure code editor** (like VS Code, Sublime Text, Cursor, or Notepad on Windows).
+2. Hit **Ctrl+F** (or Cmd+F) and search for the curly quote: `’`
+3. Replace it with a straight single quote: `'` (or just delete the whole line and re-type it manually).
+
+To make it completely bulletproof, here is the pristine, **100% straight-quote version** of the Live Command Center. 
+
+**Copy this block and paste it directly into your code editor (like VS Code) without passing it through any other notes app:**
 
 ```python
 import streamlit as st
@@ -16,16 +24,15 @@ import requests
 import xml.etree.ElementTree as ET
 
 # --- 1. LIVE GOOGLE NEWS API INTEGRATION ---
-@st.cache_data(ttl=900) # Caches news for 15 mins to prevent API blocking
+@st.cache_data(ttl=900)
 def fetch_google_news(query, count=1):
-    """Fetches real-time news from Google News RSS based on the search query."""
     url = f"https://news.google.com/rss/search?q={query}&hl=en-IN&gl=IN&ceid=IN:en"
     try:
         response = requests.get(url, timeout=5)
         root = ET.fromstring(response.content)
         news_items = []
         for item in root.findall('./channel/item')[:count]:
-            title = item.find('title').text.split(' - ')[0] # Cleans up publisher name
+            title = item.find('title').text.split(' - ')[0]
             link = item.find('link').text
             news_items.append({"title": title, "link": link})
         return news_items
@@ -35,7 +42,6 @@ def fetch_google_news(query, count=1):
 def run_page():
     # --- 2. CORE CONFIG ---
     now = datetime.now()
-    st.set_page_config(layout="wide")
     st.header("🛡️ Live Growth Command Center")
     st.markdown(f"**System Sync:** {now.strftime('%A, %d %B %Y | %I:%M %p')} | **Engine:** Live API")
 
@@ -88,11 +94,10 @@ def run_page():
         st.info("👋 Select one or more target cohorts above to pull live Google data.")
         return
 
-    # --- 5. THE LIVE INTELLIGENCE LOOP (HANDLES MULTIPLE SELECTIONS) ---
+    # --- 5. THE LIVE INTELLIGENCE LOOP ---
     st.divider()
     st.subheader("📡 Live Context & Strategic Action")
     
-    # Create tabs if multiple are selected so UI doesn't get messy
     tabs = st.tabs([p for p in picks])
 
     for i, primary in enumerate(picks):
@@ -100,27 +105,21 @@ def run_page():
             primary_lower = primary.lower()
             
             # --- ENTITY EXTRACTION ---
-            # 1. Identify City
             cities = ["mumbai", "delhi", "bangalore", "hyderabad", "chennai", "kolkata"]
             active_city = next((c for c in cities if c in primary_lower), "India")
             
-            # 2. Identify Category
             categories = {"cardio": "Heart Health", "diab": "Diabetes", "mom": "Maternal", "baby": "Pediatric", "skin": "Dermatology"}
             active_category = next((v for k, v in categories.items() if k in primary_lower), "General Healthcare")
             
-            # 3. Identify Segment
             segments = ["ntu", "churn", "winback", "active", "power", "enhancement", "new registered"]
             active_segment = next((s for s in segments if s in primary_lower), "active")
 
             # --- API EXECUTION: GOOGLE NEWS ---
             with st.spinner(f"Pulling live Google data for {active_city}..."):
-                # Query 1: Top Local News
                 gen_news = fetch_google_news(f"{active_city} top local news headlines today", count=1)[0]
-                # Query 2: Health Category News
                 health_news = fetch_google_news(f"{active_category} health news India OR {active_city} healthcare", count=1)[0]
 
-            # --- BASKET AFFINITY LOGIC (Matrix) ---
-            # Demographics
+            # --- BASKET AFFINITY LOGIC ---
             if "mom" in primary_lower or "baby" in primary_lower:
                 demographics = "👶 Pediatric | 🍼 95% Moms | 👵 2% Seniors"
                 p1, p1_url = "Pampers Baby-Dry Diapers", "https://www.apollopharmacy.in/shop-by-category/baby-care/diapers"
@@ -138,7 +137,7 @@ def run_page():
                 p1, p1_url = "ORSL Electrolyte Drink", "https://www.apollopharmacy.in/shop-by-category/otc"
                 p2, p2_url = "Apollo Life Multivitamins", "https://www.apollopharmacy.in/shop-by-category/vitamins-and-supplements"
 
-            # Behavioral Overrides (Segment & Circle)
+            # Behavioral Overrides
             pitch_tone = "Standard Restock"
             if active_segment in ["churn", "winback"]:
                 pitch_tone = "🚨 HIGH PRIORITY WINBACK: Offer 25% Off + Free Delivery to reactivate."
@@ -172,11 +171,11 @@ def run_page():
 
             # Strategy Block
             c1, c2, c3 = st.columns([1, 1, 1.5])
-            c1.info(f"**Primary Campaign Push:**\n[{p1}]({p1_url})")
-            c2.success(f"**Logical Upsell Match:**\n[{p2}]({p2_url})")
-            c3.warning(f"**🧠 Strategic Pitch (AI Directive):**\n{pitch_tone}")
+            c1.info(f"**Primary Push:**\n[{p1}]({p1_url})")
+            c2.success(f"**Logical Upsell:**\n[{p2}]({p2_url})")
+            c3.warning(f"**🧠 AI Pitch Strategy:**\n{pitch_tone}")
 
-    # --- 6. REACH DNA & ROI MATH (Aggregated for ALL selected) ---
+    # --- 6. REACH DNA & ROI MATH ---
     st.divider()
     stats = df_master[df_master['Name'].isin(picks)].sum(numeric_only=True)
     st.subheader(f"🧬 Aggregated Reach DNA & ROI ({len(picks)} Segments Selected)")
