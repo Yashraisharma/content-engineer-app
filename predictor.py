@@ -154,7 +154,7 @@ def run_page():
     # Expanded tag list to handle typos like 'banglore' or 'hydewrabad'
     city_tags = {
         'hyd', 'blr', 'del', 'mum', 'chn', 'kol', 'ncr', 'hyderabad', 'bangalore', 
-        'banglore', 'bengaluru', 'mumbai', 'chennai', 'delhi', 'kolkata', 'hydewrabad', 'hyderbad'
+        'banglore', 'bengaluru', 'mumbai', 'chennai', 'delhi', 'kolkata', 'hyderabad', 'hyderabad'
     }
     
     for r in all_rows:
