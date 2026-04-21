@@ -23,8 +23,12 @@ def run_page():
                     r = df.iloc[i]
                     if str(r.iloc[0]).lower() in ['city', 'category', 'segment']: continue
                     rows.append({
-                        'Name': str(r.iloc[0]).strip(), 'Total': int(r.iloc[1]), 
-                        'WA': int(r.iloc[7]), 'Push': int(r.iloc[3]), 'SMS': int(r.iloc[4])
+                        'Name': str(r.iloc[0]).strip(), 
+                        'Total': int(r.iloc[1]) if pd.notna(r.iloc[1]) else 0, 
+                        'WA': int(r.iloc[7]) if pd.notna(r.iloc[7]) else 0, 
+                        'Push': int(r.iloc[3]) if pd.notna(r.iloc[3]) else 0, 
+                        'SMS': int(r.iloc[4]) if pd.notna(r.iloc[4]) else 0,
+                        'Email': int(r.iloc[5]) if pd.notna(r.iloc[5]) else 0  # Restored Email Extraction
                     })
             return pd.DataFrame(rows)
         except Exception as e: 
@@ -37,7 +41,6 @@ def run_page():
     st.sidebar.title("🎮 Analysis Mode")
     mode = st.sidebar.radio("Context Switch:", ["City Perspective", "Category Perspective"])
     
-    # Glitch-free memory
     if "selected_segments" not in st.session_state:
         st.session_state.selected_segments = []
 
@@ -59,7 +62,7 @@ def run_page():
     # --- 4. THE LIVE INTELLIGENCE ENGINE ---
     primary = picks[0].lower()
     
-    # Simulated Live Data Feeds
+    # Simulated Live Data Feeds (April 21, 2026)
     hyd_weather = "🌡️ 31°C | Mostly Sunny | ⛈️ Storm Alert: Evening lightning & gusty winds."
     del_weather = "🌡️ 30°C (High 41°C) | ⚠️ Severe Heatwave Yellow Alert."
     national_news = [
@@ -71,7 +74,6 @@ def run_page():
     # --- 5. THE COMMAND CARD (UI) ---
     st.divider()
     if mode == "City Perspective":
-        # City Logic
         is_delhi = "delhi" in primary
         weather_card = del_weather if is_delhi else hyd_weather
         local_vibe = "🏛️ Civil Services Day Celebrations (Traffic curbs)" if is_delhi else "🏏 SRH vs DC @ Uppal Stadium (7:30 PM)"
@@ -88,16 +90,17 @@ def run_page():
             </div>
         """, unsafe_allow_html=True)
 
-        # BASKET AFFINITY LOGIC (CITY/WEATHER)
         if "heatwave" in weather_card.lower():
-            p1, p2 = "ORSL Electrolyte Orange", "Apollo SPF 50 Sunscreen"
+            p1, p1_url = "ORSL Electrolyte Orange", "https://www.apollopharmacy.in/shop-by-category/otc"
+            p2, p2_url = "Apollo SPF 50 Sunscreen", "https://www.apollopharmacy.in/shop-by-category/apollo-personal-care/sun-care"
         elif "storm" in weather_card.lower() or "rain" in weather_card.lower():
-            p1, p2 = "Apollo Pharmacy First Aid Kit", "Odomos Mosquito Repellent"
+            p1, p1_url = "Apollo Pharmacy First Aid Kit", "https://www.apollopharmacy.in/shop-by-category/otc"
+            p2, p2_url = "Odomos Mosquito Repellent", "https://www.apollopharmacy.in/shop-by-category/apollo-personal-care"
         else:
-            p1, p2 = "Apollo Life Multivitamins", "Dabur Honey (Immunity)"
+            p1, p1_url = "Apollo Life Multivitamins", "https://www.apollopharmacy.in/shop-by-category/vitamins-and-supplements"
+            p2, p2_url = "Dabur Honey (Immunity)", "https://www.apollopharmacy.in/shop-by-category/health-drinks"
 
     else: 
-        # Category Logic
         st.markdown(f"""
             <div style="background-color: #f0fdf4; border: 2px solid #166534; padding: 25px; border-radius: 15px; color: #000;">
                 <h2 style="margin: 0; color: #14532d;">📡 Live Category News: India</h2>
@@ -109,36 +112,45 @@ def run_page():
             </div>
         """, unsafe_allow_html=True)
 
-        # BASKET AFFINITY LOGIC (CATEGORY/DEMOGRAPHIC)
         if any(x in primary for x in ["mom", "baby", "pediatric"]):
-            p1, p2 = "Pampers Baby-Dry Diapers", "Himalaya Gentle Baby Wipes"
+            p1, p1_url = "Pampers Baby-Dry Diapers", "https://www.apollopharmacy.in/shop-by-category/baby-care/diapers"
+            p2, p2_url = "Himalaya Gentle Baby Wipes", "https://www.apollopharmacy.in/shop-by-category/baby-care/baby-wipes"
         elif any(x in primary for x in ["cardio", "diab", "chronic", "senior"]):
-            p1, p2 = "Apollo Pharmacy Digital BP Monitor", "Apollo Life Sugar-Free Protein"
+            p1, p1_url = "Apollo Pharmacy Digital BP Monitor", "https://www.apollopharmacy.in/shop-by-category/health-devices/bp-monitors"
+            p2, p2_url = "Apollo Life Sugar-Free Protein", "https://www.apollopharmacy.in/shop-by-category/diabetes-care"
         else:
-            p1, p2 = "Sensodyne Whitening Toothpaste", "Listerine Mouthwash"
+            p1, p1_url = "Sensodyne Whitening Toothpaste", "https://www.apollopharmacy.in/shop-by-category/personal-care"
+            p2, p2_url = "Listerine Mouthwash", "https://www.apollopharmacy.in/shop-by-category/personal-care"
 
     # --- 6. PRODUCT CROSS-SELL UI ---
     st.markdown("### 🛒 Contextual Cross-Sell (Basket Affinity)")
     c1, c2 = st.columns(2)
     c1.info(f"**Primary Campaign Push:**\n{p1}")
+    c1.markdown(f"[🔗 Buy on Apollo Pharmacy]({p1_url})")
     c2.success(f"**Logical Upsell Match:**\n{p2}")
+    c2.markdown(f"[🔗 Buy on Apollo Pharmacy]({p2_url})")
 
     # --- 7. REACH DNA & ROI MATH ---
     st.divider()
     stats = df_master[df_master['Name'].isin(picks)].sum(numeric_only=True)
     st.subheader("🧬 Reach DNA (Aggregated)")
-    m1, m2, m3, m4 = st.columns(4)
+    
+    # Restored 5 Columns for Email
+    m1, m2, m3, m4, m5 = st.columns(5)
     m1.metric("Total Base", f"{int(stats['Total']):,}")
     m2.metric("WhatsApp", f"{int(stats['WA']):,}")
     m3.metric("Mobile Push", f"{int(stats['Push']):,}")
     m4.metric("SMS", f"{int(stats['SMS']):,}")
+    m5.metric("Email", f"{int(stats.get('Email', 0)):,}") # Restored Email
     
     st.divider()
     st.subheader("🔮 Campaign ROI Forecast")
     
-    col_v1, col_v2 = st.columns(2)
+    # Restored 3 Vendor Rate columns to include Email
+    col_v1, col_v2, col_v3 = st.columns(3)
     wa_rate = col_v1.number_input("WA Cost (Karix)", value=0.78)
     sms_rate = col_v2.number_input("SMS Cost (Vi)", value=0.13)
+    email_rate = col_v3.number_input("Email Cost (Netcore)", value=0.03) # Restored Email Cost
     
     f1, f2 = st.columns(2)
     conv = f1.slider("Conversion Rate (%)", 0.1, 5.0, 1.0)
@@ -147,11 +159,19 @@ def run_page():
     def calc_channel(name, reach, cost):
         rev = (reach * (conv/100)) * aov
         spend = reach * cost
-        return {"Channel": name, "Reach": f"{int(reach):,}", "Spend": f"₹{int(spend):,}", "Rev": f"₹{int(rev):,}", "ROI": f"{(rev/spend):.1f}x" if spend > 0 else "∞"}
+        return {
+            "Channel": name, 
+            "Reach": f"{int(reach):,}", 
+            "Spend": f"₹{int(spend):,}", 
+            "Rev": f"₹{int(rev):,}", 
+            "ROI": f"{(rev/spend):.1f}x" if spend > 0 else "∞"
+        }
 
+    # Restored Email to the ROI Table
     table = [
         calc_channel("Mobile Push", stats['Push'], 0.0),
         calc_channel("WhatsApp", stats['WA'], wa_rate),
-        calc_channel("SMS", stats['SMS'], sms_rate)
+        calc_channel("SMS", stats['SMS'], sms_rate),
+        calc_channel("Email", stats.get('Email', 0), email_rate)
     ]
     st.table(pd.DataFrame(table))
