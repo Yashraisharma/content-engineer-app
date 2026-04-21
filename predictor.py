@@ -1,22 +1,3 @@
-Ah, the classic "smart quote" trap! This error has nothing to do with the logic of your app—it is a strict Python formatting rule.
-
-The error `invalid character '’' (U+2019)` means that somewhere in your file (likely near line 3), there is a **curly/smart quote** (`’` or `‘`) instead of a standard **straight programming quote** (`'` or `"`). 
-
-Python strictly requires straight quotes for strings. 
-
-### 🕵️‍♂️ Why did this happen?
-This almost always happens if you copy-pasted the code into a "Rich Text" editor (like Mac TextEdit, Apple Notes, or Microsoft Word) before saving it as a `.py` file. Those programs try to be helpful by automatically converting straight quotes into curly ones, which instantly breaks Python code.
-
-### 🛠️ How to Fix It Right Now:
-1. Open your `predictor.py` file in a **pure code editor** (like VS Code, Sublime Text, Cursor, or Notepad on Windows).
-2. Hit **Ctrl+F** (or Cmd+F) and search for the curly quote: `’`
-3. Replace it with a straight single quote: `'` (or just delete the whole line and re-type it manually).
-
-To make it completely bulletproof, here is the pristine, **100% straight-quote version** of the Live Command Center. 
-
-**Copy this block and paste it directly into your code editor (like VS Code) without passing it through any other notes app:**
-
-```python
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -215,4 +196,3 @@ def run_page():
         calc_channel("Email", stats.get('Email', 0), email_rate)
     ]
     st.table(pd.DataFrame(table))
-```
