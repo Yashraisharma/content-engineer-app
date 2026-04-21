@@ -19,7 +19,6 @@ def fetch_news(query, count=1):
     except: pass
     return {"title": "News Feed Offline", "link": "#"}
 
-# No cache here so it pulls fresh data the exact second you need it
 def fetch_live_weather(city_key, fallback_string):
     """Fetches highly accurate, real-time weather using Open-Meteo API locked to IST."""
     coords = {
@@ -57,14 +56,15 @@ def fetch_live_weather(city_key, fallback_string):
     except Exception:
         return fallback_string
 
-# --- 2. THE REAL-TIME AI GENERATOR ---
+# --- 2. THE REAL-TIME AI GENERATOR (GEMINI 3 FLASH) ---
 def generate_live_ai_xsell(category, segment_def, weather, city):
     try:
         # Pulls your API key securely from .streamlit/secrets.toml
         api_key = st.secrets["GEMINI_API_KEY"]
         genai.configure(api_key=api_key)
         
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # Explicitly targeting Gemini 3 Flash Preview
+        model = genai.GenerativeModel('gemini-3-flash-preview')
         prompt = f"""
         You are a clinical retail strategist for Apollo Pharmacy in India.
         Context: Target City: {city} | Current Weather: {weather} | Category: {category} | Segment: {segment_def}
@@ -236,5 +236,6 @@ def run_page():
 
 # If running directly (not imported as a module), execute the page.
 if __name__ == "__main__":
+    # If the page config is already set in a parent wrapper, you might want to comment this out
     st.set_page_config(page_title="Strategic Growth Predictor", layout="wide")
     run_page()
