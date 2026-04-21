@@ -16,7 +16,7 @@ def fetch_news(query, count=2):
     except:
         return [{"title": "Live news feed temporarily unavailable", "link": "#"}]
 
-# --- 2. 2026 DEMOGRAPHIC DNA (PERCENTAGES) ---
+# --- 2. 2026 DEMOGRAPHIC DNA & SEGMENT DEFINITIONS ---
 CITY_DNA = {
     "mumbai": {"temp": "31°C", "seniors": "14.8%", "females": "46.1%", "moms": "12.4%", "tech": "92%", "weather": "🌡️ 31°C | Mist | Humidity 63%"},
     "delhi": {"temp": "36°C", "seniors": "12.2%", "females": "46.5%", "moms": "13.8%", "tech": "91%", "weather": "🌡️ 36°C | Heat Alert | Humidity 21%"},
@@ -26,11 +26,23 @@ CITY_DNA = {
     "kolkata": {"temp": "30°C", "seniors": "16.1%", "females": "47.5%", "moms": "11.2%", "tech": "86%", "weather": "🌡️ 30°C | Mist | Humidity 84%"}
 }
 
+# The new dictionary to define the CRM segments
+SEGMENT_DEFS = {
+    "ntu": "New Transacting User (First-time buyers with high acquisition cost)",
+    "churn": "Lapsed users with zero recent activity; high flight risk",
+    "winback": "Previously churned users targeted for aggressive reactivation",
+    "power": "High-frequency, high-LTV brand loyalists",
+    "enhancement": "Active users targeted for AOV/frequency up-selling",
+    "active": "Regular, engaged purchasing users",
+    "new registered": "Users with created accounts but zero historical purchases",
+    "circle": "Premium Apollo Circle Subscription members"
+}
+
 def run_page():
     now = datetime.now()
     st.set_page_config(layout="wide")
     st.header("🛡️ Strategic Growth Predictor")
-    st.markdown(f"**Live Sync:** {now.strftime('%A, %d %B %Y')} | **Engine:** Live Apollo Site Linker v6")
+    st.markdown(f"**Live Sync:** {now.strftime('%A, %d %B %Y')} | **Engine:** Live Apollo Site Linker v7")
 
     # --- DATA ENGINE ---
     EXCEL_URL = "https://github.com/Yashraisharma/content-engineer-app/raw/main/cohort_sheets.xlsx.xlsx"
@@ -70,7 +82,6 @@ def run_page():
 
     # Dynamic Apollo URL Generator
     def apl_link(display_name, search_query):
-        # Creates a direct search query to the Apollo site to guarantee the product is found
         formatted_query = search_query.replace(" ", "%20")
         url = f"https://www.apollopharmacy.in/search-medicines/{formatted_query}"
         return f'<a href="{url}" target="_blank" style="color: #1d4ed8; text-decoration: none; font-weight: 500;">🛒 {display_name}</a>'
@@ -78,21 +89,33 @@ def run_page():
     for i, primary in enumerate(picks):
         with tabs[i]:
             p_lower = primary.lower()
+            
+            # Identify City DNA
             city_key = next((c for c in CITY_DNA.keys() if c in p_lower), "hyderabad")
             dna = CITY_DNA[city_key]
+            
+            # Identify Segment Definition
+            seg_definition = "General Urban Healthcare Cohort"
+            for key, definition in SEGMENT_DEFS.items():
+                if key in p_lower:
+                    seg_definition = definition
+                    break
             
             with st.spinner(f"Querying Google & Apollo for {primary}..."):
                 common_news = fetch_news(f"{city_key} top headlines April 2026", 1)[0]
                 health_news = fetch_news(f"{primary} healthcare trends India April 2026", 1)[0]
 
-            # --- INTELLIGENCE CARD ---
+            # --- INTELLIGENCE CARD (NOW WITH SEGMENT DEFINITION) ---
             st.markdown(f"""
                 <div style="background-color: #f8fafc; border: 2px solid #1e293b; padding: 25px; border-radius: 15px; color: #000; margin-bottom: 25px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <h2 style="margin:0;">🕵️ {primary.upper()}</h2>
-                        <span style="background: #ef4444; color:#fff; padding: 5px 15px; border-radius: 20px; font-weight: bold;">{dna['temp']} | {city_key.upper()}</span>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <h2 style="margin:0; padding-bottom: 8px;">🕵️ {primary.upper()}</h2>
+                            <span style="background: #e2e8f0; color: #334155; padding: 4px 12px; border-radius: 15px; font-size: 0.85em; font-weight: 600;">📖 {seg_definition}</span>
+                        </div>
+                        <span style="background: #ef4444; color:#fff; padding: 5px 15px; border-radius: 20px; font-weight: bold; white-space: nowrap;">{dna['temp']} | {city_key.upper()}</span>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0 15px 0;">
                         <div style="background: #fff; padding: 12px; border-radius: 8px; border: 1px solid #ddd;">
                             <b>📰 1. Common News:</b><br><a href="{common_news['link']}" target="_blank" style="color:#1d4ed8;">{common_news['title']}</a>
                         </div>
