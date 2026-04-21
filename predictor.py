@@ -8,65 +8,57 @@ import google.generativeai as genai
 
 # --- 1. LIVE UTILITIES ---
 @st.cache_data(ttl=300)
-def fetch_news(query, count=2):
+def fetch_news(query, count=1):
     url = f"https://news.google.com/rss/search?q={query}&hl=en-IN&gl=IN&ceid=IN:en"
     try:
         response = requests.get(url, timeout=5)
         root = ET.fromstring(response.content)
-        return [{"title": i.find('title').text.split(' - ')[0], "link": i.find('link').text} for i in root.findall('./channel/item')[:count]]
-    except: return [{"title": "News Feed Offline", "link": "#"}]
+        items = root.findall('./channel/item')
+        if items:
+            return {"title": items[0].find('title').text.split(' - ')[0], "link": items[0].find('link').text}
+    except: pass
+    return {"title": "News Feed Offline", "link": "#"}
 
 @st.cache_data(ttl=300)
-def fetch_live_weather(city):
+def fetch_live_weather(city, fallback_string):
+    """Fetches live weather in Celsius."""
     try:
         url = f"https://wttr.in/{city}?format=%t+|+%C+|+Humidity:+%h&m"
-        res = requests.get(url, timeout=5)
-        return f"🌡️ {res.text.strip()}" if res.status_code == 200 else "🌡️ Live Weather Syncing..."
-    except: return "🌡️ Weather Service Offline"
+        res = requests.get(url, timeout=3)
+        if res.status_code == 200 and "Unknown" not in res.text and "<html" not in res.text.lower():
+            clean_text = res.text.replace("+", "").strip()
+            return f"🌡️ {clean_text}"
+        return fallback_string
+    except: return fallback_string
 
 # --- 2. THE REAL-TIME AI GENERATOR ---
-def generate_live_ai_xsell(api_key, category, segment_def, weather, city):
-    """Calls Gemini API to generate real-time, logical cross-sells on the fly."""
-    if not api_key:
-        return None # Falls back to pre-set data if no key is provided
-    
+def generate_live_ai_xsell(category, segment_def, weather, city):
+    """Calls Gemini API to generate real-time strategies."""
     try:
-        genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-1.5-flash')
-        
         prompt = f"""
         You are a clinical retail strategist for Apollo Pharmacy in India.
-        Context:
-        - Target City: {city}
-        - Current Weather: {weather}
-        - Target Category: {category}
-        - User Segment: {segment_def}
+        Context: Target City: {city} | Current Weather: {weather} | Category: {category} | Segment: {segment_def}
         
-        Generate 5 highly specific, logical cross-sell pairs available at an Indian pharmacy. 
-        If the segment is 'Churn/Winback', focus on heavy discounts/hero items. If 'Power', focus on bulk/subscriptions.
-        Ensure products match the weather (e.g., electrolytes/sunscreen for heat, immunity for monsoon).
-        
-        Respond ONLY with a valid JSON array of arrays in this exact format, with no markdown formatting:
-        [
-            ["Anchor Product Name", "Logical Cross-Sell Product", "Brief 1-sentence strategic reason why this works now"]
-        ]
+        Generate 5 specific, logical cross-sell product pairs available at an Indian pharmacy. 
+        Focus heavily on the weather and the segment definition.
+        Respond ONLY with a valid JSON array of arrays:
+        [["Anchor Product Name", "Logical Cross-Sell Product", "Brief 1-sentence strategic reason"]]
         """
         response = model.generate_content(prompt)
-        # Clean the response to ensure it parses correctly
         clean_json = response.text.replace("```json", "").replace("```", "").strip()
         return json.loads(clean_json)
     except Exception as e:
-        st.error(f"AI Generation Failed: {e}")
         return None
 
-# --- 3. DEMOGRAPHICS & SEGMENTS ---
+# --- 3. STATIC DEMOGRAPHICS & SEGMENTS ---
 DEMOGRAPHICS = {
-    "mumbai": {"seniors": "14.8%", "females": "46.1%", "moms": "12.4%", "tech": "92%"},
-    "delhi": {"seniors": "12.2%", "females": "46.5%", "moms": "13.8%", "tech": "91%"},
-    "bangalore": {"seniors": "11.5%", "females": "47.9%", "moms": "12.1%", "tech": "96%"},
-    "hyderabad": {"seniors": "10.9%", "females": "48.8%", "moms": "11.9%", "tech": "94%"},
-    "chennai": {"seniors": "15.2%", "females": "49.7%", "moms": "10.5%", "tech": "90%"},
-    "kolkata": {"seniors": "16.1%", "females": "47.5%", "moms": "11.2%", "tech": "86%"}
+    "mumbai": {"seniors": "14.8%", "females": "46.1%", "moms": "12.4%", "tech": "92%", "fallback": "🌡️ 31°C | Mist | Humidity: 63%"},
+    "delhi": {"seniors": "12.2%", "females": "46.5%", "moms": "13.8%", "tech": "91%", "fallback": "🌡️ 36°C | Heat Alert | Humidity: 21%"},
+    "bangalore": {"seniors": "11.5%", "females": "47.9%", "moms": "12.1%", "tech": "96%", "fallback": "🌡️ 31°C | Clear | Humidity: 36%"},
+    "hyderabad": {"seniors": "10.9%", "females": "48.8%", "moms": "11.9%", "tech": "94%", "fallback": "🌡️ 35°C | Yellow Alert | Humidity: 35%"},
+    "chennai": {"seniors": "15.2%", "females": "49.7%", "moms": "10.5%", "tech": "90%", "fallback": "🌡️ 30°C | Partly Cloudy | Humidity: 79%"},
+    "kolkata": {"seniors": "16.1%", "females": "47.5%", "moms": "11.2%", "tech": "86%", "fallback": "🌡️ 30°C | Mist | Humidity: 84%"}
 }
 
 SEGMENT_DEFS = {
@@ -82,11 +74,7 @@ def run_page():
     now = datetime.now()
     st.set_page_config(layout="wide")
     st.header("🛡️ Strategic Growth Predictor")
-    
-    # --- API KEY INPUT ---
-    st.sidebar.title("🧠 AI Engine")
-    st.sidebar.markdown("Enter a Google Gemini API Key to enable real-time, dynamic cross-sell generation.")
-    api_key = st.sidebar.text_input("Gemini API Key:", type="password")
+    st.caption(f"**Live Sync:** {now.strftime('%A, %d %B %Y | %I:%M %p')}")
 
     # --- DATA LOAD ---
     EXCEL_URL = "https://github.com/Yashraisharma/content-engineer-app/raw/main/cohort_sheets.xlsx.xlsx"
@@ -131,52 +119,55 @@ def run_page():
             seg_key = next((k for k in SEGMENT_DEFS.keys() if k in p_lower), "active")
             current_seg_def = SEGMENT_DEFS.get(seg_key, 'General Healthcare Cohort')
             
-            with st.spinner("Syncing Live Context..."):
-                common_news = fetch_news(f"{city_key} top headlines", 1)[0]
-                health_news = fetch_news(f"{primary} healthcare trends India", 1)[0]
-                live_weather = fetch_live_weather(city_key)
+            with st.spinner("Syncing Live Context & Weather..."):
+                common_news = fetch_news(f"{city_key} top headlines")
+                health_news = fetch_news(f"{primary} healthcare trends India")
+                live_weather = fetch_live_weather(city_key, dna["fallback"])
 
-            # --- INTELLIGENCE CARD ---
-            st.markdown(f"""
-                <div style="background-color: #f8fafc; border: 2px solid #1e293b; padding: 25px; border-radius: 15px; color: #000; margin-bottom: 25px;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <div>
-                            <h2 style="margin:0;">🕵️ {primary.upper()}</h2>
-                            <span style="background: #e2e8f0; color: #334155; padding: 4px 12px; border-radius: 15px; font-size: 0.85em; font-weight: 600;">📖 {current_seg_def}</span>
-                        </div>
-                        <span style="background: #ef4444; color:#fff; padding: 5px 15px; border-radius: 20px; font-weight: bold;">{live_weather} | {city_key.upper()}</span>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
+            # --- NATIVE STREAMLIT UI: GUARANTEED TO RENDER ---
+            st.markdown(f"### 🕵️ {primary.upper()}")
+            st.markdown(f"**Segment:** 📖 {current_seg_def} | **Location:** {city_key.upper()} ({live_weather})")
+            
+            # Live News Block
+            st.write("#### 📡 Live Intelligence")
+            nc1, nc2 = st.columns(2)
+            nc1.info(f"**📰 Common News:** [{common_news['title']}]({common_news['link']})")
+            nc2.success(f"**🏥 Health News:** [{health_news['title']}]({health_news['link']})")
+            
+            # Demographics Block
+            st.write("#### 🧬 Cohort Demographics")
+            dc1, dc2, dc3, dc4 = st.columns(4)
+            dc1.metric("👵 Seniors", dna['seniors'])
+            dc2.metric("🍼 Moms", dna['moms'])
+            dc3.metric("👩 Female", dna['females'])
+            dc4.metric("📱 Tech Savvy", dna['tech'])
+            
+            st.divider()
 
             # --- LIVE AI GENERATION TRIGGER ---
-            st.subheader("🛒 Real-Time Strategy Matrix")
+            st.subheader("🛒 Real-Time AI Strategy Matrix")
             
-            # Use session state to hold the AI generated data so it doesn't disappear
             ai_state_key = f"ai_data_{primary}"
             if ai_state_key not in st.session_state:
                 st.session_state[ai_state_key] = None
 
-            c1, c2 = st.columns([1, 4])
-            with c1:
-                if st.button("🧠 Generate Live AI Strategy", key=f"btn_{primary}"):
-                    if not api_key:
-                        st.warning("⚠️ Please enter an API key in the sidebar to generate live strategies.")
+            if st.button("🧠 Generate Live Strategy", key=f"btn_{primary}"):
+                with st.spinner("AI is analyzing weather, city, and segment..."):
+                    ai_response = generate_live_ai_xsell(primary, current_seg_def, live_weather, city_key)
+                    if ai_response:
+                        st.session_state[ai_state_key] = ai_response
                     else:
-                        with st.spinner("AI is analyzing weather, city, and segment..."):
-                            st.session_state[ai_state_key] = generate_live_ai_xsell(api_key, primary, current_seg_def, live_weather, city_key)
+                        st.error("AI Generation failed. Check your API key or internet connection.")
 
-            # --- RENDER THE TABLE ---
+            # RENDER THE TABLE
             active_data = st.session_state[ai_state_key]
-            
             if active_data:
-                # If AI successfully generated data, format it with links
                 final_rows = [[apl_link(row[0]), apl_link(row[1]), row[2]] for row in active_data]
                 df_xsell = pd.DataFrame(final_rows, columns=["User Purchase", "Push (Linked)", "Live AI Reasoning"])
                 st.success("✅ AI Strategy Generated Successfully based on current context.")
                 st.markdown(df_xsell.to_html(escape=False, index=False), unsafe_allow_html=True)
             else:
-                st.info("👆 Click 'Generate Live AI Strategy' to ping the LLM and create 5 unique combinations for this segment right now.")
+                st.info("👆 Click 'Generate Live Strategy' to ping the AI and create 5 unique combinations for this segment right now.")
 
             st.write("")
 
@@ -185,7 +176,11 @@ def run_page():
     stats = df_master[df_master['Name'].isin(picks)].sum(numeric_only=True)
     st.subheader("🧬 Aggregated Reach & ROI")
     m1, m2, m3, m4, m5 = st.columns(5)
-    m1.metric("Total", f"{int(stats['Total']):,}"); m2.metric("WA", f"{int(stats['WA']):,}"); m3.metric("Push", f"{int(stats['Push']):,}"); m4.metric("SMS", f"{int(stats['SMS']):,}"); m5.metric("Email", f"{int(stats.get('Email', 0)):,}")
+    m1.metric("Total Base", f"{int(stats['Total']):,}")
+    m2.metric("WhatsApp", f"{int(stats['WA']):,}")
+    m3.metric("Mobile Push", f"{int(stats['Push']):,}")
+    m4.metric("SMS", f"{int(stats['SMS']):,}")
+    m5.metric("Email", f"{int(stats.get('Email', 0)):,}")
 
     cv1, cv2, cv3 = st.columns(3)
     wa_rate = cv1.number_input("WA Cost", value=0.78)
@@ -201,4 +196,9 @@ def run_page():
         spend = reach * cost
         return {"Channel": name, "Reach": f"{int(reach):,}", "Spend": f"₹{int(spend):,}", "Revenue": f"₹{int(rev):,}", "ROI": f"{(rev/spend):.1f}x" if spend > 0 else "0.0x"}
 
-    st.table(pd.DataFrame([calc("Push", stats['Push'], 0.0), calc("WhatsApp", stats['WA'], wa_rate), calc("SMS", stats['SMS'], sms_rate), calc("Email", stats.get('Email', 0), email_rate)]))
+    st.table(pd.DataFrame([
+        calc("Push", stats['Push'], 0.0), 
+        calc("WhatsApp", stats['WA'], wa_rate), 
+        calc("SMS", stats['SMS'], sms_rate), 
+        calc("Email", stats.get('Email', 0), email_rate)
+    ]))
