@@ -19,7 +19,6 @@ def fetch_news(query, count=1):
     except: pass
     return {"title": "News Feed Offline", "link": "#"}
 
-# CACHE REMOVED: This forces a true, real-time pull every single time the page refreshes.
 def fetch_live_weather(city_key, fallback_string):
     """Fetches highly accurate, real-time weather using Open-Meteo API locked to IST."""
     coords = {
@@ -34,10 +33,7 @@ def fetch_live_weather(city_key, fallback_string):
     lat, lon = coords[city_key]
     
     try:
-        # Added timezone=Asia/Kolkata to guarantee exact local temperature
         url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,weather_code&timezone=Asia%2FKolkata"
-        
-        # Added standard headers so the API doesn't block the Streamlit request
         headers = {"User-Agent": "Mozilla/5.0"}
         res = requests.get(url, headers=headers, timeout=5).json()
         
@@ -47,7 +43,6 @@ def fetch_live_weather(city_key, fallback_string):
             humidity = current.get("relative_humidity_2m", "--")
             code = current.get("weather_code", 0)
             
-            # WMO Weather interpretation codes
             if code == 0: condition = "Clear"
             elif code in [1, 2, 3]: condition = "Partly Cloudy"
             elif code in [45, 48]: condition = "Haze"
@@ -58,12 +53,16 @@ def fetch_live_weather(city_key, fallback_string):
             return f"🌡️ {temp}°C | {condition} | Humidity: {humidity}%"
         else:
             return fallback_string
-    except Exception as e:
+    except Exception:
         return fallback_string
 
-# --- 2. THE REAL-TIME AI GENERATOR ---
+# --- 2. THE REAL-TIME AI GENERATOR (st.secrets method) ---
 def generate_live_ai_xsell(category, segment_def, weather, city):
     try:
+        # NATIVE STREAMLIT METHOD: Pulls directly from .streamlit/secrets.toml
+        api_key = st.secrets["GEMINI_API_KEY"]
+        genai.configure(api_key=api_key)
+        
         model = genai.GenerativeModel('gemini-1.5-flash')
         prompt = f"""
         You are a clinical retail strategist for Apollo Pharmacy in India.
@@ -78,6 +77,8 @@ def generate_live_ai_xsell(category, segment_def, weather, city):
         clean_json = response.text.replace("```json", "").replace("```", "").strip()
         return json.loads(clean_json)
     except Exception as e:
+        # This allows Streamlit to show exactly what went wrong if the key is missing
+        st.error(f"AI Connection Error: {e}") 
         return None
 
 # --- 3. STATIC DEMOGRAPHICS & SEGMENTS ---
@@ -185,8 +186,6 @@ def run_page():
                     ai_response = generate_live_ai_xsell(primary, current_seg_def, live_weather, city_key)
                     if ai_response:
                         st.session_state[ai_state_key] = ai_response
-                    else:
-                        st.error("AI Generation failed. Check your API key or internet connection.")
 
             # RENDER THE TABLE
             active_data = st.session_state[ai_state_key]
